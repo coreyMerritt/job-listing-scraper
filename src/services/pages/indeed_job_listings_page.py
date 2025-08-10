@@ -11,14 +11,11 @@ from selenium.common.exceptions import (
   TimeoutException
 )
 from entities.indeed_job_listing import IndeedJobListing
-from entities.job_application import JobApplication
 from models.configs.quick_settings import QuickSettings
-from models.configs.universal_config import UniversalConfig
 from models.enums.element_type import ElementType
 from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
 from services.misc.selenium_helper import SeleniumHelper
-from services.pages.indeed_apply_now_page.indeed_apply_now_page import IndeedApplyNowPage
 from services.misc.language_parser import LanguageParser
 
 
@@ -27,10 +24,8 @@ class IndeedJobListingsPage:
   __selenium_helper: SeleniumHelper
   __database_manager: DatabaseManager
   __language_parser: LanguageParser
-  __universal_config: UniversalConfig
   __quick_settings: QuickSettings
-  __apply_now_page: IndeedApplyNowPage
-  __jobs_applied_to_this_session: List[dict[str, str | float | None]]
+  __current_session_jobs: List[dict[str, str | float | None]]
   __current_page_number: int
 
   def __init__(
@@ -39,17 +34,14 @@ class IndeedJobListingsPage:
     selenium_helper: SeleniumHelper,
     database_manager: DatabaseManager,
     language_parser: LanguageParser,
-    universal_config: UniversalConfig,
     quick_settings: QuickSettings
   ):
     self.__driver = driver
     self.__selenium_helper = selenium_helper
     self.__database_manager = database_manager
     self.__language_parser = language_parser
-    self.__universal_config = universal_config
     self.__quick_settings = quick_settings
-    self.__apply_now_page = IndeedApplyNowPage(driver, selenium_helper, universal_config, quick_settings)
-    self.__jobs_applied_to_this_session = []
+    self.__current_session_jobs = []
     self.__current_page_number = 1
 
   def is_present(self) -> bool:
@@ -59,7 +51,7 @@ class IndeedJobListingsPage:
     except NoSuchElementException:
       return False
 
-  def handle_current_query(self) -> None:
+  def scrape_current_query(self) -> None:
     PROPER_JOB_INDEXES = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18]
     INVISIBLE_AD_INDEXES = [1, 13, 19]
     VISIBLE_AD_INDEXES = [7]
@@ -88,12 +80,8 @@ class IndeedJobListingsPage:
         continue
       self.__add_job_listing_to_db(brief_job_listing)
       brief_job_listing.print()
-      if brief_job_listing.to_minimal_dict() in self.__jobs_applied_to_this_session:
+      if brief_job_listing.to_minimal_dict() in self.__current_session_jobs:
         logging.info("Ignoring Job Listing because: we've already applied this session.\n")
-        continue
-      brief_job_application = JobApplication(self.__quick_settings, self.__universal_config, brief_job_listing)
-      if not brief_job_application.applied():
-        self.__add_application_to_db(brief_job_application)
         continue
       self.__open_job_in_new_tab(job_listing_li)
       try:
@@ -107,23 +95,13 @@ class IndeedJobListingsPage:
       if job_listing is None:
         raise RuntimeError("Job listing is None -- unknown error case")
       self.__add_job_listing_to_db(job_listing)
-      job_application = JobApplication(self.__quick_settings, self.__universal_config, job_listing)
-      if not job_application.applied():
-        self.__driver.close()
-        self.__driver.switch_to.window(self.__driver.window_handles[0])
-        self.__add_application_to_db(job_application)
-        continue
       while not self.__is_apply_now_span() and not self.__is_apply_on_company_site_span():
         logging.debug("Waiting for apply button...")
         time.sleep(0.5)
       if self.__quick_settings.bot_behavior.easy_apply_only.indeed and self.__is_apply_on_company_site_span():
         logging.info("Ignoring because job is not easy apply...")
-        self.__driver.close()
-        self.__driver.switch_to.window(self.__driver.window_handles[0])
         continue
-      self.__apply_to_job(brief_job_listing)
       self.__driver.switch_to.window(self.__driver.window_handles[0])
-      self.__add_application_to_db(job_application)
       self.__handle_potential_overload()
 
   def __get_job_listing_link(self, job_listing_li: WebElement) -> str:
@@ -209,34 +187,10 @@ class IndeedJobListingsPage:
         time.sleep(0.1)
     raise TimeoutException("Timed out trying to build job listing.")
 
-  def __apply_to_job(self, brief_job_listing: IndeedJobListing) -> None:
-    if self.__is_apply_now_span():
-      self.__click_apply_now_button()
-      self.__apply_now_page.apply()
-      self.__jobs_applied_to_this_session.append(brief_job_listing.to_minimal_dict())
-      return
-    elif self.__is_apply_on_company_site_span():
-      assert not self.__quick_settings.bot_behavior.easy_apply_only.indeed
-      self.__go_to_company_site()
-      self.__jobs_applied_to_this_session.append(brief_job_listing.to_minimal_dict())
-      return
-    elif self.__is_applied_span():
-      return
-    raise RuntimeError("Tried to apply to a job, but expected conditions were not met regarding the apply button.")
-
   def __handle_potential_overload(self) -> None:
-    jobs_open = len(self.__driver.window_handles) - 1
-    pause_every_x_jobs = self.__quick_settings.bot_behavior.pause_every_x_jobs
     current_memory_usage = psutil.virtual_memory().percent
     logging.debug("Current memory usage: %s%s", current_memory_usage, "%")
-    if (
-      pause_every_x_jobs
-      and jobs_open % pause_every_x_jobs == 0
-      and jobs_open >= pause_every_x_jobs
-    ):
-      print(f"\nResponding to request to pause after every {pause_every_x_jobs} jobs.")
-      input("\tPress enter to proceed...")
-    elif current_memory_usage > 90:
+    if current_memory_usage > 90:
       print("\nCurrent memory usage is too high. Please clean up existing tabs to continue safely.")
       input("\tPress enter to proceed...")
 
@@ -342,29 +296,11 @@ class IndeedJobListingsPage:
       return job_description_html
     raise AttributeError("Job description div has no innerHTML attribute.")
 
-  def __is_applied_span(self) -> bool:
-    return self.__selenium_helper.exact_text_is_present(
-      "Applied",
-      ElementType.SPAN
-    )
-
   def __is_apply_now_span(self) -> bool:
     return self.__selenium_helper.exact_text_is_present(
       "Apply now",
       ElementType.SPAN
     )
-
-  def __get_apply_now_button(self) -> WebElement:
-    assert self.__is_apply_now_span()
-    apply_now_span = self.__selenium_helper.get_element_by_exact_text(
-      "Apply now",
-      ElementType.SPAN
-    )
-    apply_now_button = apply_now_span.find_element(By.XPATH, "../..")
-    return apply_now_button
-
-  def __click_apply_now_button(self) -> None:
-    self.__get_apply_now_button().click()
 
   def __is_apply_on_company_site_span(self) -> bool:
     return self.__selenium_helper.exact_text_is_present(
@@ -372,32 +308,8 @@ class IndeedJobListingsPage:
       ElementType.SPAN
     )
 
-  def __get_apply_on_company_site_button(self) -> WebElement:
-    assert self.__is_apply_on_company_site_span()
-    apply_now_span = self.__selenium_helper.get_element_by_exact_text(
-      "Apply on company site",
-      ElementType.SPAN
-    )
-    apply_now_button = apply_now_span.find_element(By.XPATH, "..")
-    return apply_now_button
-
-  def __go_to_company_site(self) -> None:
-    apply_on_company_site_button = self.__get_apply_on_company_site_button()
-    company_site_link = apply_on_company_site_button.get_attribute("href")
-    assert company_site_link
-    try:
-      self.__driver.get(company_site_link)
-    except TimeoutException:
-      logging.warning("Timed out waiting for company website. Proceeding anyway...")
-
   def __add_job_listing_to_db(self, job_listing: IndeedJobListing) -> None:
     self.__database_manager.create_new_job_listing(
       job_listing,
-      Platform.INDEED
-    )
-
-  def __add_application_to_db(self, job_application: JobApplication) -> None:
-    self.__database_manager.create_new_application(
-      job_application,
       Platform.INDEED
     )

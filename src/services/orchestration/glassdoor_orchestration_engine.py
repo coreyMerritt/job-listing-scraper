@@ -11,7 +11,6 @@ from models.enums.element_type import ElementType
 from services.misc.database_manager import DatabaseManager
 from services.query_url_builders.glassdoor_query_url_builder import GlassdoorQueryUrlBuilder
 from services.misc.selenium_helper import SeleniumHelper
-from services.pages.indeed_apply_now_page.indeed_apply_now_page import IndeedApplyNowPage
 from services.pages.glassdoor_login_page import GlassdoorLoginPage
 from services.pages.glassdoor_job_listings_page import GlassdoorJobListingsPage
 from services.misc.language_parser import LanguageParser
@@ -33,8 +32,7 @@ class GlassdoorOrchestrationEngine:
     language_parser: LanguageParser,
     universal_config: UniversalConfig,
     quick_settings: QuickSettings,
-    glassdoor_config: GlassdoorConfig,
-    indeed_apply_now_page: IndeedApplyNowPage
+    glassdoor_config: GlassdoorConfig
   ):
     self.__driver = driver
     self.__selenium_helper = selenium_helper
@@ -45,15 +43,12 @@ class GlassdoorOrchestrationEngine:
       driver,
       selenium_helper,
       database_manager,
-      language_parser,
-      universal_config,
-      quick_settings,
-      indeed_apply_now_page
+      language_parser
     )
 
 
   def login(self) -> None:
-    logging.info("Applying on Glassdoor...")
+    logging.info("Logging into Glassdoor...")
     base_url = "https://www.glassdoor.com"
     while True:
       try:
@@ -65,7 +60,7 @@ class GlassdoorOrchestrationEngine:
         time.sleep(0.5)
     self.__glassdoor_login_page.login()
 
-  def apply(self) -> None:
+  def scrape(self) -> None:
     search_terms = self.__universal_config.search.terms.match
     for search_term in search_terms:
       timeout = 60.0
@@ -78,7 +73,7 @@ class GlassdoorOrchestrationEngine:
               query_url = query_builder.build(search_term)
               self.__go_to_query_url(query_url)
               self.__wait_for_query_url_resolution(query_url)
-              self.__glassdoor_job_listings_page.handle_current_query()
+              self.__glassdoor_job_listings_page.scrape_current_query()
               break
             except TimeoutError:
               logging.warning("Timed out waiting for query url. Trying again...")

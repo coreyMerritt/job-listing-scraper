@@ -41,13 +41,12 @@ class IndeedOrchestrationEngine:
       selenium_helper,
       database_manager,
       language_parser,
-      universal_config,
       quick_settings
     )
 
   def login(self) -> None:
     base_url = "https://www.indeed.com"
-    logging.debug("Applying to %s...", base_url)
+    logging.debug("Logging into %s...", base_url)
     self.__indeed_login_page.login()
     while not self.__indeed_one_time_code_page.is_present():
       logging.debug("Waiting for one-time-code page to appear...")
@@ -57,12 +56,12 @@ class IndeedOrchestrationEngine:
       self.__indeed_one_time_code_page.resolve_with_mail_dot_com()
     self.__indeed_one_time_code_page.wait_for_captcha_resolution()
 
-  def apply(self) -> None:
+  def scrape(self) -> None:
     self.__go_to_query()
     while not self.__indeed_job_listings_page.is_present():
       logging.debug("Waiting for Job Listings page to appear...")
       time.sleep(0.5)
-    self.__indeed_job_listings_page.handle_current_query()
+    self.__indeed_job_listings_page.scrape_current_query()
 
   def __go_to_query(self) -> None:
     query_url_builder = IndeedQueryUrlBuilder(self.__universal_config)

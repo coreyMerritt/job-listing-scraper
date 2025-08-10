@@ -14,19 +14,14 @@ from selenium.common.exceptions import (
 )
 from entities.glassdoor_job_listing import GlassdoorJobListing
 from entities.glassdoor_show_more_jobs_button import GlassdoorShowMoreJobsButton
-from entities.job_application import JobApplication
 from exceptions.glassdoor_show_more_jobs_button_broken_exception import GlassdoorShowMoreJobsButtonBrokenException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.page_didnt_load_exception import PageDidntLoadException
 from exceptions.service_is_down_exception import ServiceIsDownException
 from exceptions.zero_search_results_exception import ZeroSearchResultsException
-from models.configs.quick_settings import QuickSettings
 from models.enums.element_type import ElementType
-from models.configs.universal_config import UniversalConfig
-from models.enums.ignore_type import IgnoreType
 from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
-from services.pages.indeed_apply_now_page.indeed_apply_now_page import IndeedApplyNowPage
 from services.misc.selenium_helper import SeleniumHelper
 from services.misc.language_parser import LanguageParser
 
@@ -36,10 +31,7 @@ class GlassdoorJobListingsPage:
   __selenium_helper: SeleniumHelper
   __database_manager: DatabaseManager
   __language_parser: LanguageParser
-  __universal_config: UniversalConfig
-  __quick_settings: QuickSettings
-  __indeed_apply_now_page: IndeedApplyNowPage
-  __jobs_applied_to_this_session: List[dict[str, str | float | None]]
+  __current_session_jobs: List[dict[str, str | float | None]]
   __show_more_jobs_button: GlassdoorShowMoreJobsButton | None
 
   def __init__(
@@ -47,22 +39,16 @@ class GlassdoorJobListingsPage:
     driver: uc.Chrome,
     selenium_helper: SeleniumHelper,
     database_manager: DatabaseManager,
-    language_parser: LanguageParser,
-    universal_config: UniversalConfig,
-    quick_settings: QuickSettings,
-    indeed_apply_now_page: IndeedApplyNowPage
+    language_parser: LanguageParser
   ):
     self.__driver = driver
     self.__selenium_helper = selenium_helper
     self.__database_manager = database_manager
     self.__language_parser = language_parser
-    self.__universal_config = universal_config
-    self.__quick_settings = quick_settings
-    self.__indeed_apply_now_page = indeed_apply_now_page
-    self.__jobs_applied_to_this_session = []
+    self.__current_session_jobs = []
     self.__show_more_jobs_button = None
 
-  def handle_current_query(self) -> None:
+  def scrape_current_query(self) -> None:
     try:
       self.__confirm_page_stability()
     except ZeroSearchResultsException:
@@ -95,12 +81,8 @@ class GlassdoorJobListingsPage:
       brief_job_listing = GlassdoorJobListing(self.__language_parser, job_listing_li)
       self.__add_job_listing_to_db(brief_job_listing)
       brief_job_listing.print()
-      if brief_job_listing.to_minimal_dict() in self.__jobs_applied_to_this_session:
+      if brief_job_listing.to_minimal_dict() in self.__current_session_jobs:
         logging.info("Ignoring Job Listing because: we've already applied this session.\n")
-        continue
-      brief_job_application = JobApplication(self.__quick_settings, self.__universal_config, brief_job_listing)
-      if not brief_job_application.applied():
-        self.__add_application_to_db(brief_job_application)
         continue
       self.__remove_create_job_dialog()
       self.__remove_survey_popup()
@@ -109,18 +91,9 @@ class GlassdoorJobListingsPage:
         job_listing = self.__build_job_listing(i)
       except TimeoutError:
         logging.warning("Job info div failed to load. Skipping...")
-        brief_job_application.set_ignore_type(IgnoreType.DESCRIPTION_DIDNT_LOAD)
-        brief_job_application.set_applied(False)
-        self.__add_application_to_db(brief_job_application)
         continue
       self.__add_job_listing_to_db(job_listing)
-      job_application = JobApplication(self.__quick_settings, self.__universal_config, job_listing)
-      if not job_application.applied():
-        self.__add_application_to_db(job_application)
-        continue
-      self.__apply_to_selected_job()
-      self.__jobs_applied_to_this_session.append(job_listing.to_minimal_dict())
-      self.__add_application_to_db(job_application)
+      self.__current_session_jobs.append(job_listing.to_minimal_dict())
       self.__handle_potential_overload()
 
   def __confirm_page_stability(self, timeout=60.0) -> None:
@@ -283,42 +256,6 @@ class GlassdoorJobListingsPage:
         time.sleep(0.1)
     raise NoSuchElementException("Failed waiting for job listing li.")
 
-  def __apply_to_selected_job(self) -> None:
-    logging.debug("Applying to selected job...")
-    starting_window_count = len(self.__driver.window_handles)
-    self.__remove_create_job_dialog()
-    self.__remove_survey_popup()
-    apply_button = self.__get_apply_button()
-    if not apply_button:
-      return    # Assumes this is a greyed out "Applied" job
-    apply_button_text = apply_button.text
-    if apply_button_text.lower().strip() == "applied":
-      return
-    if apply_button.is_enabled():
-      apply_button.click()
-    while len(self.__driver.window_handles) == starting_window_count:
-      logging.debug("Waiting for new tab to open...")
-      time.sleep(0.1)
-    self.__driver.switch_to.window(self.__driver.window_handles[-1])
-    self.__handle_potential_human_verification_wait()
-    self.__handle_potential_too_many_requests()
-    self.__handle_application(apply_button_text)
-    self.__driver.switch_to.window(self.__driver.window_handles[0])
-
-  def __get_apply_button(self) -> WebElement | None:
-    easy_apply_button_selector = '[data-test="easyApply"]'
-    apply_on_employer_site_button_selector = '[data-test="applyButton"]'
-    job_info_div = self.__get_job_info_div()
-    try:
-      apply_button = job_info_div.find_element(By.CSS_SELECTOR, easy_apply_button_selector)
-    except NoSuchElementException:
-      try:
-        apply_button = job_info_div.find_element(By.CSS_SELECTOR, apply_on_employer_site_button_selector)
-      except NoSuchElementException:
-        self.__selenium_helper.get_element_by_exact_text("Applied", ElementType.BUTTON)
-        return None
-    return apply_button
-
   def __wait_for_job_info_div(self, timeout=10) -> None:
     job_info_div_xpath = "/html/body/div[4]/div[4]/div[2]/div[2]/div/div[1]"
     start_time = time.time()
@@ -335,20 +272,6 @@ class GlassdoorJobListingsPage:
     job_info_div_xpath = "/html/body/div[4]/div[4]/div[2]/div[2]/div/div[1]"
     job_info_div = self.__driver.find_element(By.XPATH, job_info_div_xpath)
     return job_info_div
-
-  def __handle_application(self, apply_button_text: str) -> None:
-    if apply_button_text.lower().strip() == "easy apply":
-      self.__easy_apply()
-      return
-    elif apply_button_text.lower().strip() == "apply on employer site":
-      return
-    elif apply_button_text.lower().strip() == "applied":
-      return
-    raise RuntimeError(f"Apply button text did not match any expected conditions: {apply_button_text}")
-
-  def __easy_apply(self) -> None:
-    logging.debug("Executing easy apply...")
-    self.__indeed_apply_now_page.apply()
 
   def __remove_create_job_dialog(self) -> None:
     create_job_alert_dialog_xpath = "/html/body/div[8]/div/dialog"
@@ -368,22 +291,6 @@ class GlassdoorJobListingsPage:
       exit_button.click()
     except NoSuchElementException:
       pass
-
-  def __handle_potential_human_verification_wait(self) -> None:
-    while self.__selenium_helper.exact_text_is_present(
-      "Additional Verification Required",
-      ElementType.H1
-    ):
-      logging.debug("Waiting for user to handle captcha...")
-      time.sleep(0.5)
-
-  def __handle_potential_too_many_requests(self) -> None:
-    while self.__selenium_helper.exact_text_is_present(
-      "Too Many Requests",
-      ElementType.H1
-    ):
-      # TODO: Implement proxy swap
-      input("Heck, rate limited...")
 
   def __is_job_listing(self, element: WebElement) -> bool:
     attr = element.get_attribute("data-test")
@@ -405,29 +312,14 @@ class GlassdoorJobListingsPage:
       return False
 
   def __handle_potential_overload(self) -> None:
-    jobs_open = len(self.__driver.window_handles) - 1
-    pause_every_x_jobs = self.__quick_settings.bot_behavior.pause_every_x_jobs
     current_memory_usage = psutil.virtual_memory().percent
     logging.debug("Current memory usage: %s%s", current_memory_usage, "%")
-    if (
-      pause_every_x_jobs
-      and jobs_open % pause_every_x_jobs == 0
-      and jobs_open >= pause_every_x_jobs
-    ):
-      print(f"\nResponding to request to pause after every {pause_every_x_jobs} jobs.")
-      input("\tPress enter to proceed...")
-    elif current_memory_usage > 90:
+    if current_memory_usage > 90:
       print("\nCurrent memory usage is too high. Please clean up existing tabs to continue safely.")
       input("\tPress enter to proceed...")
 
   def __add_job_listing_to_db(self, job_listing: GlassdoorJobListing) -> None:
     self.__database_manager.create_new_job_listing(
       job_listing,
-      Platform.GLASSDOOR
-    )
-
-  def __add_application_to_db(self, job_application: JobApplication) -> None:
-    self.__database_manager.create_new_application(
-      job_application,
       Platform.GLASSDOOR
     )

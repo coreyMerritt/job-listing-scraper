@@ -8,6 +8,7 @@ import yaml
 import undetected_chromedriver as uc
 from dacite import from_dict
 from models.configs.full_config import FullConfig
+from models.enums.ignore_type import IgnoreType
 from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
 from services.misc.proxy_manager import ProxyManager
@@ -15,7 +16,6 @@ from services.misc.selenium_helper import SeleniumHelper
 from services.orchestration.glassdoor_orchestration_engine import GlassdoorOrchestrationEngine
 from services.orchestration.indeed_orchestration_engine import IndeedOrchestrationEngine
 from services.orchestration.linkedin_orchestration_engine import LinkedinOrchestrationEngine
-from services.pages.indeed_apply_now_page.indeed_apply_now_page import IndeedApplyNowPage
 from services.misc.language_parser import LanguageParser
 
 
@@ -60,13 +60,7 @@ class Start:
       self.__language_parser,
       self.__config.universal,
       self.__config.quick_settings,
-      self.__config.glassdoor,
-      IndeedApplyNowPage(
-        self.__driver,
-        self.__selenium_helper,
-        self.__config.universal,
-        self.__config.quick_settings
-      )
+      self.__config.glassdoor
     )
     self.__linkedin_orchestration_engine = LinkedinOrchestrationEngine(
       self.__driver,
@@ -83,15 +77,12 @@ class Start:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
-    apply_parser = subparsers.add_parser("apply", help="Aggregates jobs; fills out some data; scrapes job info.")
-    apply_parser.set_defaults(func=self.apply)
-    get_parser = subparsers.add_parser("get", help="Gets scrapped job info.")
-    get_parser.add_argument("--ignore-terms", type=int, required=True)
-    get_parser.set_defaults(func=self.__get)
+    scrape_parser = subparsers.add_parser("scrape", help="Scrapes job info.")
+    scrape_parser.set_defaults(func=self.scrape)
     args = parser.parse_args()
     args.func(args)
 
-  def apply(self, args: argparse.Namespace):    # pylint: disable=unused-argument
+  def scrape(self, args: argparse.Namespace):    # pylint: disable=unused-argument
     try:
       for some_platform in self.__config.quick_settings.bot_behavior.platform_order:
         platform = str(some_platform).lower()
@@ -104,11 +95,11 @@ class Start:
       for some_platform in self.__config.quick_settings.bot_behavior.platform_order:
         platform = str(some_platform).lower()
         if platform == Platform.LINKEDIN.value.lower():
-          self.__apply_on_linkedin()
+          self.__linkedin_orchestration_engine.scrape()
         elif platform == Platform.GLASSDOOR.value.lower():
-          self.__apply_on_glassdoor()
+          self.__glassdoor_orchestration_engine.scrape()
         elif platform == Platform.INDEED.value.lower():
-          self.__apply_on_indeed()
+          self.__indeed_orchestration_engine.scrape()
       input("\n\tPress enter to exit...")
       self.__remove_all_tabs_except_first()
     except Exception:
@@ -136,47 +127,11 @@ class Start:
     for name in noisy_loggers:
       logging.getLogger(name).setLevel(logging.WARNING)
 
-  def __apply_on_indeed(self) -> None:
-    self.__indeed_orchestration_engine.apply()
-    if self.__config.quick_settings.bot_behavior.pause_after_each_platform:
-      input("\nFinished with Indeed. Press enter to proceed...")
-    if self.__config.quick_settings.bot_behavior.remove_tabs_after_each_platform:
-      self.__remove_all_tabs_except_first()
-
-  def __apply_on_glassdoor(self) -> None:
-    self.__glassdoor_orchestration_engine.apply()
-    if self.__config.quick_settings.bot_behavior.pause_after_each_platform:
-      input("\nFinished with Glassdoor. Press enter to proceed...")
-    if self.__config.quick_settings.bot_behavior.remove_tabs_after_each_platform:
-      self.__remove_all_tabs_except_first()
-
-  def __apply_on_linkedin(self) -> None:
-    self.__linkedin_orchestration_engine.apply()
-    if self.__config.quick_settings.bot_behavior.pause_after_each_platform:
-      input("\nFinished with Linkedin. Press enter to proceed...")
-    if self.__config.quick_settings.bot_behavior.remove_tabs_after_each_platform:
-      self.__remove_all_tabs_except_first()
-
   def __remove_all_tabs_except_first(self) -> None:
     while len(self.__driver.window_handles) > 1:
       self.__driver.switch_to.window(self.__driver.window_handles[-1])
       self.__driver.close()
     self.__driver.switch_to.window(self.__driver.window_handles[0])
 
-  def __get(self, args: argparse.Namespace) -> None:
-    if args.ignore_terms:
-      self.__print_highest_ignore_terms(args.ignore_terms)
-
-  def __print_highest_ignore_terms(self, limit: int) -> None:
-    print("\n" + "Job Listing Ignore Terms".center(100))
-    keywords = self.__database_manager.get_highest_job_listing_ignore_keywords(limit)
-    print(f"{"Category":>22}   {"Term":<40} {"Count"}")
-    print("─" * 100)
-    # Some formatting to ensure all values are in the same format that supports the max count, ex) 1,302 -- 0,021
-    max_count = max(x[2] for x in keywords)
-    width = len(f"{max_count:,}")
-    for category, term, count in keywords:
-      print(f"{category:>22}   {term:<40} {count:{width},}")
-    print()
 
 Start().execute()

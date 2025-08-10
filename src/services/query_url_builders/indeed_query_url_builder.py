@@ -22,7 +22,10 @@ class IndeedQueryUrlBuilder:
     self.__ignore_terms = universal_config.search.terms.ignore
     self.__location = universal_config.search.location.city
     self.__max_age_in_days = universal_config.search.misc.max_age_in_days
-    self.__min_salary = universal_config.search.salary.min
+    if universal_config.search.salary.min:
+      self.__min_salary = universal_config.search.salary.min
+    else:
+      self.__min_salary = 0       # TODO: We need to figure out some better way to handle null
     self.__max_distance_in_mis = universal_config.search.location.max_distance_in_mis
     self.__remote = universal_config.search.location.remote
     self.__hybrid = universal_config.search.location.hybrid

@@ -15,16 +15,11 @@ from selenium.common.exceptions import (
   TimeoutException
 )
 from entities.linkedin_job_listing import LinkedinJobListing
-from entities.job_application import JobApplication
 from exceptions.no_matching_jobs_page_exception import NoMatchingJobsPageException
-from models.configs.quick_settings import QuickSettings
 from models.enums.element_type import ElementType
-from models.configs.linkedin_config import LinkedinConfig
-from models.configs.universal_config import UniversalConfig
 from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
 from services.misc.proxy_manager import ProxyManager
-from services.pages.linkedin_apply_now_page.linkedin_apply_now_page import LinkedinApplyNowPage
 from services.misc.selenium_helper import SeleniumHelper
 from services.misc.language_parser import LanguageParser
 
@@ -32,13 +27,10 @@ from services.misc.language_parser import LanguageParser
 class LinkedinJobListingsPage:
   __driver: uc.Chrome
   __selenium_helper: SeleniumHelper
-  __universal_config: UniversalConfig
-  __quick_settings: QuickSettings
   __database_manager: DatabaseManager
   __language_parser: LanguageParser
-  __linkedin_apply_now_page: LinkedinApplyNowPage
   __proxy_manager: ProxyManager
-  __jobs_applied_to_this_session: List[dict[str, str | float | None]]
+  __current_session_jobs: List[dict[str, str | float | None]]
 
   def __init__(
     self,
@@ -46,28 +38,16 @@ class LinkedinJobListingsPage:
     selenium_helper: SeleniumHelper,
     database_manager: DatabaseManager,
     language_parser: LanguageParser,
-    universal_config: UniversalConfig,
-    quick_settings: QuickSettings,
-    linkedin_config: LinkedinConfig,
     proxy_manager: ProxyManager
   ):
     self.__driver = driver
     self.__selenium_helper = selenium_helper
     self.__database_manager = database_manager
     self.__language_parser = language_parser
-    self.__universal_config = universal_config
-    self.__quick_settings = quick_settings
-    self.__linkedin_apply_now_page = LinkedinApplyNowPage(
-      driver,
-      selenium_helper,
-      quick_settings,
-      universal_config,
-      linkedin_config
-    )
     self.__proxy_manager = proxy_manager
-    self.__jobs_applied_to_this_session = []
+    self.__current_session_jobs = []
 
-  def handle_current_query(self) -> None:
+  def scrape_current_query(self) -> None:
     total_jobs_tried = 0
     job_listing_li_index = 0
     while True:
@@ -90,13 +70,8 @@ class LinkedinJobListingsPage:
       brief_job_listing = self.__build_brief_job_listing(job_listing_li_index)
       self.__add_job_listing_to_db(brief_job_listing)
       brief_job_listing.print()
-      if brief_job_listing.to_minimal_dict() in self.__jobs_applied_to_this_session:
+      if brief_job_listing.to_minimal_dict() in self.__current_session_jobs:
         logging.info("Ignoring Brief Job Listing because we've already applied this session. Skipping...")
-        continue
-      brief_job_application = JobApplication(self.__quick_settings, self.__universal_config, brief_job_listing)
-      if not brief_job_application.applied():
-        logging.info("Ignoring Brief Job Listing because it doesn't pass the filter check. Skipping...")
-        self.__add_application_to_db(brief_job_application)
         continue
       if self.__something_went_wrong():
         logging.info('"Something went wrong", likely rate limited behavior. Skipping...')
@@ -107,21 +82,8 @@ class LinkedinJobListingsPage:
         job_listing_li = self.__get_job_listing_li(job_listing_li_index)
       job_listing = self.__build_job_listing(job_listing_li_index)
       self.__add_job_listing_to_db(job_listing)
-      job_application = JobApplication(self.__quick_settings, self.__universal_config, job_listing)
-      if not job_application.applied():
-        logging.info("Ignoring Job Listing because it doesn't pass the filter check. Skipping...")
-        self.__add_application_to_db(job_application)
-        continue
-      if not self.__is_apply_button() and not self.__is_easy_apply_button():
-        logging.info("This Job Listing has no apply button. Skipping...")
-        continue
-      try:
-        self.__apply_to_selected_job()
-      except NoMatchingJobsPageException:
-        input("Lets get a proper logging statement in here -- what happened?")
       self.__driver.switch_to.window(self.__driver.window_handles[0])
-      self.__jobs_applied_to_this_session.append(job_listing.to_minimal_dict())
-      self.__add_application_to_db(job_application)
+      self.__current_session_jobs.append(job_listing.to_minimal_dict())
       self.__handle_potential_overload()
 
   def __handle_incrementors(self, total_jobs_tried: int, job_listing_li_index: int) -> Tuple[int, int]:
@@ -184,58 +146,6 @@ class LinkedinJobListingsPage:
           logging.debug("Failed to click next page span... Scrolling down and trying again...")
           self.__selenium_helper.scroll_down(self.__get_job_listings_ul())
           time.sleep(0.1)
-
-  def __apply_to_selected_job(self) -> None:
-    logging.info("Applying to job...")
-    self.__wait_for_any_apply_button()
-    if self.__is_easy_apply_button():
-      self.__apply_on_linkedin()
-    elif self.__is_apply_button():
-      assert not self.__quick_settings.bot_behavior.easy_apply_only.linkedin
-      self.__apply_on_company_site()
-    else:
-      raise RuntimeError("An apply button is found, but doesn't meet criteria of either apply button.")
-
-  def __wait_for_new_tab_to_open(self, starting_tab_count: int, timeout=10) -> None:
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-      if len(self.__driver.window_handles) > starting_tab_count:
-        time.sleep(0.1)   # This little bit of buffer time seems to help with some issues
-        return
-      self.__handle_potential_problems()
-      logging.debug("Waiting for new tab to open...")
-      time.sleep(0.1)
-    raise TimeoutError("Timed out waiting for a new tab to open...")
-
-  def __click_apply_button(self) -> None:
-    self.__wait_for_apply_button()
-    apply_button = self.__get_apply_button()
-    apply_span = apply_button.find_element(By.XPATH, "./span")
-    apply_span.click()
-
-  def __click_easy_apply_button(self) -> None:
-    self.__wait_for_easy_apply_button()
-    easy_apply_button = self.__get_easy_apply_button()
-    easy_apply_span = easy_apply_button.find_element(By.XPATH, "./span")
-    easy_apply_span.click()
-
-  def __apply_on_linkedin(self) -> None:
-    logging.debug("Applying in new tab...")
-    url = self.__driver.current_url
-    self.__selenium_helper.open_new_tab()
-    self.__driver.get(url)
-    self.__click_easy_apply_button()
-    self.__linkedin_apply_now_page.apply()
-    self.__driver.switch_to.window(self.__driver.window_handles[0])
-
-  def __apply_on_company_site(self) -> None:
-    starting_tab_count = len(self.__driver.window_handles)
-    self.__click_apply_button()
-    try:
-      self.__wait_for_new_tab_to_open(starting_tab_count)
-    except TimeoutError:
-      # Weird bug where occasionally the Linkedin apply button does nothing
-      logging.warning("Apply button is dead... skipping...")
 
   def __build_brief_job_listing(self, index: int, timeout=4.0) -> LinkedinJobListing:
     start_time = time.time()
@@ -368,73 +278,6 @@ class LinkedinJobListingsPage:
       base_element=main_content_div
     )
 
-  def __wait_for_any_apply_button(self) -> None:
-    while True:
-      if self.__is_apply_button():
-        return
-      elif self.__is_easy_apply_button():
-        return
-      logging.debug("Waiting for any apply button...")
-      time.sleep(0.1)
-
-  def __wait_for_apply_button(self) -> None:
-    while not self.__is_apply_button():
-      self.__handle_potential_problems()
-      logging.debug("Waiting for apply button...")
-      time.sleep(0.1)
-
-  def __wait_for_easy_apply_button(self) -> None:
-    while not self.__is_easy_apply_button():
-      self.__handle_potential_problems()
-      logging.debug("Waiting for Easy Apply button...")
-      time.sleep(0.1)
-
-  def __is_apply_button(self) -> bool:
-    apply_button_id = "jobs-apply-button-id"
-    try:
-      full_job_details_div = self.__get_full_job_details_div()
-      if full_job_details_div is None:
-        return False
-      apply_button = full_job_details_div.find_element(By.ID, apply_button_id)
-      apply_span = apply_button.find_element(By.XPATH, "./span")
-      if apply_span.text.lower().strip() == "apply":
-        return True
-      return False
-    except NoSuchElementException:
-      return False
-
-  def __is_easy_apply_button(self) -> bool:
-    easy_apply_button_id = "jobs-apply-button-id"
-    try:
-      full_job_details_div = self.__get_full_job_details_div()
-      if full_job_details_div is None:
-        return False
-      easy_apply_button = full_job_details_div.find_element(By.ID, easy_apply_button_id)
-      easy_apply_span = easy_apply_button.find_element(By.XPATH, "./span")
-      if easy_apply_span.text.lower().strip() == "easy apply":
-        return True
-      return False
-    except NoSuchElementException:
-      return False
-
-  def __get_apply_button(self) -> WebElement:
-    apply_span = self.__selenium_helper.get_element_by_exact_text(
-      "Apply",
-      ElementType.SPAN,
-      self.__get_full_job_details_div()
-    )
-    apply_button = apply_span.find_element(By.XPATH, "..")
-    return apply_button
-
-  def __get_easy_apply_button(self) -> WebElement:
-    easy_apply_span = self.__selenium_helper.get_element_by_exact_text(
-      "Easy Apply",
-      ElementType.SPAN,
-      self.__get_full_job_details_div()
-    )
-    easy_apply_button = easy_apply_span.find_element(By.XPATH, "..")
-    return easy_apply_button
-
   def __is_no_matching_jobs_page(self) -> bool:
     return self.__selenium_helper.exact_text_is_present(
       "No matching jobs found",
@@ -485,29 +328,14 @@ class LinkedinJobListingsPage:
     sys.exit(0)
 
   def __handle_potential_overload(self) -> None:
-    jobs_open = len(self.__driver.window_handles) - 1
-    pause_every_x_jobs = self.__quick_settings.bot_behavior.pause_every_x_jobs
     current_memory_usage = psutil.virtual_memory().percent
     logging.debug("Current memory usage: %s%s", current_memory_usage, "%")
-    if (
-      pause_every_x_jobs
-      and jobs_open % pause_every_x_jobs == 0
-      and jobs_open >= pause_every_x_jobs
-    ):
-      print(f"\nResponding to request to pause after every {pause_every_x_jobs} jobs.")
-      input("\tPress enter to proceed...")
-    elif current_memory_usage > 90:
+    if current_memory_usage > 90:
       print("\nCurrent memory usage is too high. Please clean up existing tabs to continue safely.")
       input("\tPress enter to proceed...")
 
   def __add_job_listing_to_db(self, job_listing: LinkedinJobListing) -> None:
     self.__database_manager.create_new_job_listing(
       job_listing,
-      Platform.LINKEDIN
-    )
-
-  def __add_application_to_db(self, job_application: JobApplication) -> None:
-    self.__database_manager.create_new_application(
-      job_application,
       Platform.LINKEDIN
     )

@@ -11,11 +11,7 @@ quick_settings:
       glassdoor: true
       indeed: true
       linkedin: true
-    pause_on_unknown_stepper: false
-    pause_after_each_platform: false
-    remove_tabs_after_each_platform: false
     default_page_load_timeout: 30
-    pause_every_x_jobs: null    # int | null -- ex) 50
 system:
   browser:
     path: ""  # ex) "/usr/bin/google-chrome"
@@ -32,83 +28,6 @@ system:
     # - host: "somednsname"
     #   port: 12345
 universal:
-  about_me:
-    authorized_to_work_in_us: true
-    military_veteran: false
-    willing_to_relocate: true
-    name:
-      first: "" # ex) "John"
-      last: ""  # ex) "Smith"
-    contact:
-      email_address: "" # ex) "john.smith@gmail.com"
-      phone_number: ""  # ex) "1238674309"
-    location:
-      city: ""  # ex) "Dallas"
-      country: "" # ex) "United States"
-      postal_code: 00000 # ex) 12345
-      state: "" # ex) "Texas"
-      state_code: ""  # ex) "TX"
-      street_address: ""  # ex) "12345 Some St"
-    work_experience:
-      # Most recent first
-      - title: "" # ex) "Software Engineer"
-        company: "" # ex) "Amazon"
-        currently_work_here: false
-        start:
-          day_of_month: 00  # ex) 25
-          month: 00 # ex) 12
-          year: 0000  # ex) 2023
-        end:
-          day_of_month: 00  # ex) 25
-          month: 00 # ex) 12
-          year: 0000  # ex) 2024
-      - title: "" # ex) "Software Engineer"
-        company: "" # ex) "Amazon"
-        currently_work_here: false
-        start:
-          day_of_month: 00  # ex) 25
-          month: 00 # ex) 12
-          year: 0000  # ex) 2023
-        end:
-          day_of_month: 00  # ex) 25
-          month: 00 # ex) 12
-          year: 0000  # ex) 2024
-    education:
-      # Place your most impressive degree first, if multiple
-      degrees:
-        - currently_attending: false
-          school: ""  # ex) "Western Governor's University"
-          city: ""  # ex) "Salt Lake City"
-          state: ""   # ex) "Utah"
-          country: ""   # ex) "United States"
-          degree_type: ""   # ex) "Bachelor's Degree"
-          field_of_study: ""  # ex) "Computer Science"
-          start:
-            day_of_month: 00  # ex) 25
-            month: 00 # ex) 12
-            year: 0000  # ex) 2020
-          end:
-            day_of_month: 00  # ex) 25
-            month: 00 # ex) 12
-            year: 0000  # ex) 2024
-        - currently_attending: false
-          school: ""  # ex) "Western Governor's University"
-          city: ""  # ex) "Salt Lake City"
-          state: ""   # ex) "Utah"
-          country: ""   # ex) "United States"
-          degree_type: ""   # ex) "Bachelor's Degree"
-          field_of_study: ""  # ex) "Computer Science"
-          start:
-            day_of_month: 00  # ex) 25
-            month: 00 # ex) 12
-            year: 0000  # ex) 2020
-          end:
-            day_of_month: 00  # ex) 25
-            month: 00 # ex) 12
-            year: 0000  # ex) 2024
-    links:
-      github: ""  # ex) "https://github.com/torvalds", can use "N/A" is desired
-  # This is the section that governs search queries, occasionally will be referenced for form info as well
   search:
     experience:
       # These can have dramatic affects on search results.
@@ -136,10 +55,9 @@ universal:
         # - "COBOL"
     misc:
       # Some sites consider "1 day" to be UTC 00:00 to present. Recommend 2 or higher for this
-      max_age_in_days: 0  # ex) 2
+      max_age_in_days: 0  # Can not be null, must be int -- ex) 2
       min_company_rating: 0.0 # ex) 3.0
   bot_behavior:
-    ignore_jobs_that_demand_cover_letters: true
     years_of_experience:
       # Max can/should be adjusted, but its highly recommended to leave min as null
       minimum: null

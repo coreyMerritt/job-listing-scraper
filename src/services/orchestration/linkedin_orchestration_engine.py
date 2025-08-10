@@ -44,23 +44,20 @@ class LinkedinOrchestrationEngine:
       selenium_helper,
       database_manager,
       language_parser,
-      universal_config,
-      quick_settings,
-      linkedin_config,
       proxy_manager
     )
 
   def login(self) -> None:
-    logging.debug("Applying...")
+    logging.debug("Logging into Linkedin...")
     self.__linkedin_login_page.login()
 
-  def apply(self) -> None:
+  def scrape(self) -> None:
     query_terms = self.__universal_config.search.terms.match
     if not query_terms or len(query_terms) == 0:
       query_terms = [""]
     for search_term in query_terms:
       self.__go_to_query(search_term)
-      self.__linkedin_job_listings_page.handle_current_query()
+      self.__linkedin_job_listings_page.scrape_current_query()
 
   def __go_to_query(self, search_term: str) -> None:
     query_url_builder = LinkedinQueryUrlBuilder(self.__universal_config, self.__quick_settings)

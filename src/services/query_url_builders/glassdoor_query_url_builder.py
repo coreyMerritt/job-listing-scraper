@@ -18,12 +18,21 @@ class GlassdoorQueryUrlBuilder:
     if universal_config.search.location.city:
       self.__location = universal_config.search.location.city
     else:
-      self.__location = universal_config.about_me.location.country
+      self.__location = "United%20States"   # TODO: We need to figure out some better way to handle null
     self.__remote = universal_config.search.location.remote
-    self.__min_company_rating = universal_config.search.misc.min_company_rating
+    if universal_config.search.misc.min_company_rating:
+      self.__min_company_rating = universal_config.search.misc.min_company_rating
+    else:
+      self.__min_company_rating = 0
     self.__max_age_in_days = universal_config.search.misc.max_age_in_days
-    self.__min_salary = universal_config.search.salary.min
-    self.__max_salary = universal_config.search.salary.max
+    if universal_config.search.salary.min:
+      self.__min_salary = universal_config.search.salary.min
+    else:
+      self.__min_salary = 0           # TODO: We need to figure out some better way to handle null
+    if universal_config.search.salary.max:
+      self.__max_salary = universal_config.search.salary.max
+    else:
+      self.__max_salary = 1000000      # TODO: We need to figure out some better way to handle null
     self.__url = ""
 
   def build(self, search_term: str) -> str:
