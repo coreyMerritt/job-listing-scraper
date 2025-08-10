@@ -1,0 +1,2 @@
+class ServiceIsDownException(Exception):
+  pass

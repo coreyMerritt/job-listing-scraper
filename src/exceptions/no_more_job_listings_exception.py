@@ -1,0 +1,2 @@
+class NoMoreJobListingsException(Exception):
+  pass

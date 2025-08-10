@@ -1,0 +1,2 @@
+class PageDidntLoadException(Exception):
+  pass

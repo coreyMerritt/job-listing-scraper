@@ -1,0 +1,14 @@
+beautifulsoup4==4.13.4
+dacite==1.9.2
+langid==1.1.6
+psycopg2-binary==2.9.10
+psutil==7.0.0
+pyyaml==6.0.2
+python-box==7.3.2
+setuptools==80.9.0
+soupsieve==2.7
+sqlalchemy==2.0.41
+sqlalchemy2-stubs==0.0.2a38
+sshtunnel==0.4.0
+undetected-chromedriver==3.5.5
+

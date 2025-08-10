@@ -1,0 +1,2 @@
+class ZeroSearchResultsException(Exception):
+  pass

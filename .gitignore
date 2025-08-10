@@ -1,0 +1,7 @@
+__pycache__
+.env
+.venv
+config.yml
+test.py
+email-test.py
+

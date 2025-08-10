@@ -1,0 +1,2 @@
+class NoMatchingJobsPageException(Exception):
+  pass
