@@ -1,9 +1,9 @@
 quick_settings:
   bot_behavior:
     platform_order:
-      - "linkedin"
       - "glassdoor"
       - "indeed"
+      - "linkedin"
     # This determines whether we click the jobs and scrape the detailed info
     # If false, the following will be null: Description, Min YoE, Max YoE
     full_scrape: false

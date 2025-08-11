@@ -1,0 +1,2 @@
+class BadJobListingLiException(Exception):
+  pass

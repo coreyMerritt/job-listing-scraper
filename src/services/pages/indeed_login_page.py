@@ -56,7 +56,9 @@ class IndeedLoginPage:
     while True:
       try:
         sign_in_anchor = self.__selenium_helper.get_element_by_exact_text("Sign in", ElementType.ANCHOR)
-        sign_in_anchor.click()
+        sign_in_url = sign_in_anchor.get_attribute("href")
+        assert sign_in_url
+        self.__driver.get(sign_in_url)
         return
       except NoSuchElementException:
         pass

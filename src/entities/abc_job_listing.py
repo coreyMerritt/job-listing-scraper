@@ -21,11 +21,11 @@ class JobListing(ABC):
   __post_time: datetime | None
 
   def __init__(self, language_parser: LanguageParser):
-    self._init_min_pay()
-    self._init_max_pay()
     self._init_title()
     self._init_company()
     self._init_location()
+    self._init_min_pay()
+    self._init_max_pay()
     self._init_url()
     self._init_language(language_parser)
     self._init_description()

@@ -11,7 +11,7 @@ from services.misc.database_manager import DatabaseManager
 from services.query_url_builders.glassdoor_query_url_builder import GlassdoorQueryUrlBuilder
 from services.misc.selenium_helper import SeleniumHelper
 from services.pages.glassdoor_login_page import GlassdoorLoginPage
-from services.pages.glassdoor_job_listings_page import GlassdoorJobListingsPage
+from services.pages.job_listing_pages.glassdoor_job_listings_page import GlassdoorJobListingsPage
 from services.misc.language_parser import LanguageParser
 
 

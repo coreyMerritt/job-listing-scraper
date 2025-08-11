@@ -11,7 +11,6 @@ from services.misc.language_parser import LanguageParser
 
 
 class GlassdoorJobListing(JobListing):
-  __url: str | None
   __job_listing_li: WebElement
   __job_info_div: WebElement | None
 
@@ -19,10 +18,8 @@ class GlassdoorJobListing(JobListing):
     self,
     language_parser: LanguageParser,
     job_listing_li: WebElement,
-    job_info_div: WebElement | None = None,
-    url: str | None = None
+    job_info_div: WebElement | None = None
   ):
-    self.__url = url
     self.__job_listing_li = job_listing_li
     self.__job_info_div = job_info_div
     super().__init__(language_parser)
@@ -77,17 +74,17 @@ class GlassdoorJobListing(JobListing):
         first_max_hourly_from_range_match = float(max_hourly_from_range_match.group(1)) * 2080
         self.set_max_pay(first_max_hourly_from_range_match)
         return
-      single_hourly_regex = r"\$([0-9]+[.]?[0-9]+)"
-      single_hourly_match = re.match(single_hourly_regex, job_salary_div_text)
-      if single_hourly_match:
-        first_single_hourly_match = float(single_hourly_match.group(1)) * 2080
-        self.set_max_pay(first_single_hourly_match)
-        return
       single_salary_regex = r"\$([0-9]+)[k|K]"
       single_salary_match = re.match(single_salary_regex, job_salary_div_text)
       if single_salary_match:
         first_single_salary_match = float(single_salary_match.group(1)) * 1000
         self.set_max_pay(first_single_salary_match)
+        return
+      single_hourly_regex = r"\$([0-9]+[.]?[0-9]+)"
+      single_hourly_match = re.match(single_hourly_regex, job_salary_div_text)
+      if single_hourly_match:
+        first_single_hourly_match = float(single_hourly_match.group(1)) * 2080
+        self.set_max_pay(first_single_hourly_match)
         return
     except NoSuchElementException:
       pass

@@ -19,11 +19,12 @@ from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvert
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.no_next_page_exception import NoNextPageException
 from exceptions.page_didnt_load_exception import PageDidntLoadException
+from exceptions.page_froze_exception import PageFrozeException
 from exceptions.unable_to_determine_job_count_exception import UnableToDetermineJobCountException
 from exceptions.zero_search_results_exception import ZeroSearchResultsException
 from models.enums.element_type import ElementType
 from models.enums.platform import Platform
-from services.pages.abc_job_listings_page import JobListingsPage
+from services.pages.job_listing_pages.abc_job_listings_page import JobListingsPage
 
 
 class GlassdoorJobListingsPage(JobListingsPage):
@@ -69,14 +70,51 @@ class GlassdoorJobListingsPage(JobListingsPage):
         if self.__is_survey_popup():
           self.__remove_survey_popup()
       except NoSuchElementException as e:
-        if self.__is_show_more_jobs_span():
-          self.__safe_click_show_more_jobs_button()
+        if self._is_next_page():
+          self._go_to_next_page()
           self.__wait_for_new_job_listing_li(job_listing_li_index + 1)
         else:
           raise NoMoreJobListingsException() from e
       except StaleElementReferenceException:
         logging.debug("Failed to get Job Listing li. Trying again...")
         job_listings_ul = self.__get_job_listings_ul()
+
+  def _is_next_page(self) -> bool:
+    self._selenium_helper.scroll_to_bottom()
+    try:
+      job_listings_ul = self.__get_job_listings_ul()
+      job_listings_ul.find_element(By.XPATH, "../div/div/button")
+      return True
+    except NoSuchElementException:
+      return False
+
+  def _go_to_next_page(self, timeout=15.0) -> None:
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+      try:
+        starting_li_count = len(self.__get_job_listings_ul().find_elements(By.TAG_NAME, "li"))
+        show_more_jobs_button = self.__get_show_more_jobs_button()
+        show_more_jobs_button.click()
+        self.__wait_for_more_job_listings(starting_li_count)
+        return
+      except ElementNotInteractableException:
+        logging.debug("ElementNotInteractableException. Checking for dialogs and trying again...")
+        if self.__is_create_job_dialog():
+          self.__remove_create_job_dialog()
+        if self.__is_survey_popup():
+          self.__remove_survey_popup()
+        time.sleep(0.1)
+      except ElementClickInterceptedException:
+        logging.debug("ElementClickInterceptedException. Checking for dialogs and trying again...")
+        if self.__is_create_job_dialog():
+          self.__remove_create_job_dialog()
+        if self.__is_survey_popup():
+          self.__remove_survey_popup()
+        time.sleep(0.1)
+      except StaleElementReferenceException:
+        self.__get_show_more_jobs_button()
+        time.sleep(0.1)
+    raise TimeoutError("Timed out trying to show more jobs.")
 
   def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=10.0) -> GlassdoorJobListing:
     start_time = time.time()
@@ -107,8 +145,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
         job_listing = GlassdoorJobListing(
           self._language_parser,
           job_listing_li,
-          job_details_div,
-          self._driver.current_url
+          job_details_div
         )
         return job_listing
       except StaleElementReferenceException:
@@ -132,14 +169,17 @@ class GlassdoorJobListingsPage(JobListingsPage):
     )
 
   def _click_job(self, job_listing_li: WebElement, timeout=10) -> None:
-    if self.__is_create_job_dialog():
-      self.__remove_create_job_dialog()
-    if self.__is_survey_popup():
-      self.__remove_survey_popup()
-    a = job_listing_li.find_element(By.CSS_SELECTOR, "a.JobCard_trackingLink__HMyun")
-    self._driver.execute_script("arguments[0].removeAttribute('target')", a)
-    wrapper = job_listing_li.find_element(By.CSS_SELECTOR, "[data-test='job-card-wrapper']")
-    wrapper.click()
+    try:
+      if self.__is_create_job_dialog():
+        self.__remove_create_job_dialog()
+      if self.__is_survey_popup():
+        self.__remove_survey_popup()
+      a = job_listing_li.find_element(By.CSS_SELECTOR, "a.JobCard_trackingLink__HMyun")
+      self._driver.execute_script("arguments[0].removeAttribute('target')", a)
+      wrapper = job_listing_li.find_element(By.CSS_SELECTOR, "[data-test='job-card-wrapper']")
+      wrapper.click()
+    except ElementClickInterceptedException:
+      raise PageFrozeException()
 
   def _get_job_details_div(self, timeout=30.0) -> WebElement:
     self.__wait_for_job_info_div()
@@ -220,34 +260,6 @@ class GlassdoorJobListingsPage(JobListingsPage):
     except NoSuchElementException:
       return False
 
-  def __safe_click_show_more_jobs_button(self, timeout=15.0) -> None:
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-      try:
-        starting_li_count = len(self.__get_job_listings_ul().find_elements(By.TAG_NAME, "li"))
-        show_more_jobs_button = self.__get_show_more_jobs_button()
-        show_more_jobs_button.click()
-        self.__wait_for_more_job_listings(starting_li_count)
-        return
-      except ElementNotInteractableException:
-        logging.debug("ElementNotInteractableException. Checking for dialogs and trying again...")
-        if self.__is_create_job_dialog():
-          self.__remove_create_job_dialog()
-        if self.__is_survey_popup():
-          self.__remove_survey_popup()
-        time.sleep(0.1)
-      except ElementClickInterceptedException:
-        logging.debug("ElementClickInterceptedException. Checking for dialogs and trying again...")
-        if self.__is_create_job_dialog():
-          self.__remove_create_job_dialog()
-        if self.__is_survey_popup():
-          self.__remove_survey_popup()
-        time.sleep(0.1)
-      except StaleElementReferenceException:
-        self.__get_show_more_jobs_button()
-        time.sleep(0.1)
-    raise TimeoutError("Timed out trying to show more jobs.")
-
   def __wait_for_job_description(self, timeout=15.0) -> None:
     description_div_selector = ".JobDetails_jobDescription__uW_fK.JobDetails_blurDescription__vN7nh"
     start_time = time.time()
@@ -279,17 +291,8 @@ class GlassdoorJobListingsPage(JobListingsPage):
     try_again_button.click()
     self.__wait_for_job_info_div()
 
-  def __is_show_more_jobs_span(self) -> bool:
-    self._selenium_helper.scroll_to_bottom()
-    try:
-      job_listings_ul = self.__get_job_listings_ul()
-      job_listings_ul.find_element(By.XPATH, "../div/div/button")
-      return True
-    except NoSuchElementException:
-      return False
-
   def __get_show_more_jobs_button(self, timeout=10.0) -> WebElement:
-    if not self.__is_show_more_jobs_span():
+    if not self._is_next_page():
       raise NoNextPageException()
     self._selenium_helper.scroll_to_bottom()
     start_time = time.time()
@@ -311,7 +314,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
       if starting_li_count != ending_li_count:
         break
     if starting_li_count == ending_li_count:
-      if self.__is_show_more_jobs_span():
+      if self._is_next_page():
         raise JavascriptException("Button did not produce more <li>s")
 
   def __wait_for_new_job_listing_li(self, index: int, timeout=10) -> None:

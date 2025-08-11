@@ -7,6 +7,7 @@ from entities.abc_job_listing import JobListing
 from exceptions.job_details_didnt_load_exception import JobDetailsDidntLoadException
 from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvertisementException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
+from exceptions.page_froze_exception import PageFrozeException
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
 from services.misc.database_manager import DatabaseManager
@@ -59,8 +60,12 @@ class JobListingsPage(ABC):
         logging.info("Skipping Job Listing because it is an advertisement.")
         continue
       except NoMoreJobListingsException:
-        logging.info("No Job Listings left -- Finished with query.")
-        return
+        if self._is_next_page():
+          self._go_to_next_page()
+          continue  # TODO: Because of how Glassdoor functions, this causes a bug where Glassdoor skips 1/x listings
+        else:
+          logging.info("No Job Listings left -- Finished with query.")
+          return
       logging.info("Scrolling Job Listing Li into view...")
       self._selenium_helper.scroll_into_view(job_listing_li)
       logging.info("Building Brief Job Listing...")
@@ -78,8 +83,14 @@ class JobListingsPage(ABC):
         logging.info("Adding Brief Job Listing to database...")
         self._add_job_listing_to_db(brief_job_listing)
         continue
-      logging.info("Clicking Job Listing Li...")
-      self._click_job(job_listing_li)
+      try:
+        logging.info("Clicking Job Listing Li...")
+        self._click_job(job_listing_li)
+      except PageFrozeException:
+        logging.warning("Pages seems to have froze. Refreshing and trying query again...")
+        self._driver.refresh()
+        self.scrape_current_query()
+        return
       try:
         logging.info("Getting Job Details Div...")
         job_details_div = self._get_job_details_div()
@@ -105,6 +116,14 @@ class JobListingsPage(ABC):
 
   @abstractmethod
   def _get_job_listing_li(self, job_listing_li_index: int, timeout=10.0) -> WebElement:
+    pass
+
+  @abstractmethod
+  def _is_next_page(self) -> bool:
+    pass
+
+  @abstractmethod
+  def _go_to_next_page(self) -> None:
     pass
 
   @abstractmethod
