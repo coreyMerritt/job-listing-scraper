@@ -27,12 +27,70 @@ class GlassdoorJobListing(JobListing):
     self.__job_info_div = job_info_div
     super().__init__(language_parser)
 
-  # TODO: Implement
   def _init_min_pay(self) -> None:
+    try:
+      job_salary_div_class = "JobCard_salaryEstimate__QpbTW"
+      job_salary_div = self.__job_listing_li.find_element(By.CLASS_NAME, job_salary_div_class)
+      job_salary_div_text = job_salary_div.text
+      min_salary_from_range_regex = r"\$([0-9]+)[k|K] - \$[0-9]+[k|K]"
+      min_salary_from_range_match = re.match(min_salary_from_range_regex, job_salary_div_text)
+      if min_salary_from_range_match:
+        first_min_salary_from_range_match = float(min_salary_from_range_match.group(1)) * 1000
+        self.set_min_pay(first_min_salary_from_range_match)
+        return
+      min_hourly_from_range_regex = r"\$([0-9]+[.]?[0-9]+) - \$[0-9]+[.]?[0-9]+"
+      min_hourly_from_range_match = re.match(min_hourly_from_range_regex, job_salary_div_text)
+      if min_hourly_from_range_match:
+        first_min_hourly_from_range_match = float(min_hourly_from_range_match.group(1)) * 2080
+        self.set_min_pay(first_min_hourly_from_range_match)
+        return
+      single_hourly_regex = r"\$([0-9]+[.]?[0-9]+)"
+      single_hourly_match = re.match(single_hourly_regex, job_salary_div_text)
+      if single_hourly_match:
+        first_single_hourly_match = float(single_hourly_match.group(1)) * 2080
+        self.set_min_pay(first_single_hourly_match)
+        return
+      single_salary_regex = r"\$([0-9]+)[k|K]"
+      single_salary_match = re.match(single_salary_regex, job_salary_div_text)
+      if single_salary_match:
+        first_single_salary_match = float(single_salary_match.group(1)) * 1000
+        self.set_min_pay(first_single_salary_match)
+        return
+    except NoSuchElementException:
+      pass
     self.set_min_pay(None)
 
-  # TODO: Implement
   def _init_max_pay(self) -> None:
+    try:
+      job_salary_div_class = "JobCard_salaryEstimate__QpbTW"
+      job_salary_div = self.__job_listing_li.find_element(By.CLASS_NAME, job_salary_div_class)
+      job_salary_div_text = job_salary_div.text
+      max_salary_from_range_regex = r"\$[0-9]+[k|K] - \$([0-9]+)[k|K]"
+      max_salary_from_range_match = re.match(max_salary_from_range_regex, job_salary_div_text)
+      if max_salary_from_range_match:
+        first_max_salary_from_range_match = float(max_salary_from_range_match.group(1)) * 1000
+        self.set_max_pay(first_max_salary_from_range_match)
+        return
+      max_hourly_from_range_regex = r"\$[0-9]+[.]?[0-9]+ - \$([0-9]+[.]?[0-9]+)"
+      max_hourly_from_range_match = re.match(max_hourly_from_range_regex, job_salary_div_text)
+      if max_hourly_from_range_match:
+        first_max_hourly_from_range_match = float(max_hourly_from_range_match.group(1)) * 2080
+        self.set_max_pay(first_max_hourly_from_range_match)
+        return
+      single_hourly_regex = r"\$([0-9]+[.]?[0-9]+)"
+      single_hourly_match = re.match(single_hourly_regex, job_salary_div_text)
+      if single_hourly_match:
+        first_single_hourly_match = float(single_hourly_match.group(1)) * 2080
+        self.set_max_pay(first_single_hourly_match)
+        return
+      single_salary_regex = r"\$([0-9]+)[k|K]"
+      single_salary_match = re.match(single_salary_regex, job_salary_div_text)
+      if single_salary_match:
+        first_single_salary_match = float(single_salary_match.group(1)) * 1000
+        self.set_max_pay(first_single_salary_match)
+        return
+    except NoSuchElementException:
+      pass
     self.set_max_pay(None)
 
   def _init_title(self) -> None:
@@ -51,14 +109,11 @@ class GlassdoorJobListing(JobListing):
     self.set_location(location_div.text.strip())
 
   def _init_url(self) -> None:
-    if self.__url:
-      self.set_url(self.__url)
-    else:
-      job_anchor_class = "JobCard_trackingLink__HMyun"
-      job_anchor = self.__job_listing_li.find_element(By.CLASS_NAME, job_anchor_class)
-      url = job_anchor.get_attribute("href")
-      assert url
-      self.set_url(url)
+    title_anchor_class = "JobCard_jobTitle__GLyJ1"
+    title_anchor = self.__job_listing_li.find_element(By.CLASS_NAME, title_anchor_class)
+    job_url = title_anchor.get_attribute("href")
+    assert job_url
+    self.set_url(job_url)
 
   # Actually initializes min and max yoe
   def _init_min_yoe(self) -> None:
