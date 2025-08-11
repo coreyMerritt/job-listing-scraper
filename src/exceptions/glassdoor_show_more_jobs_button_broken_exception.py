@@ -1,2 +1,0 @@
-class GlassdoorShowMoreJobsButtonBrokenException(Exception):
-  pass

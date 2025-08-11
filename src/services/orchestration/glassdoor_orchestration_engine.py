@@ -1,8 +1,7 @@
 import logging
 import time
 import undetected_chromedriver as uc
-from selenium.common.exceptions import TimeoutException
-from exceptions.glassdoor_show_more_jobs_button_broken_exception import GlassdoorShowMoreJobsButtonBrokenException
+from selenium.common.exceptions import JavascriptException, TimeoutException
 from exceptions.service_is_down_exception import ServiceIsDownException
 from models.configs.glassdoor_config import GlassdoorConfig
 from models.configs.quick_settings import QuickSettings
@@ -84,7 +83,7 @@ class GlassdoorOrchestrationEngine:
               logging.error("Glassdoor service appears to be down. Skipping all Glassdoor queries...")
               return
           break
-        except GlassdoorShowMoreJobsButtonBrokenException:
+        except JavascriptException:
           logging.error("Glassdoor \"Show More Jobs\" button isn't functioning. Trying again...")
           continue
 

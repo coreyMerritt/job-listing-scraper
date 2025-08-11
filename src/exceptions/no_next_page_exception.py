@@ -1,0 +1,2 @@
+class NoNextPageException(Exception):
+  pass

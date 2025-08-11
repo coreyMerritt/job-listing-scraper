@@ -13,13 +13,13 @@ class GlassdoorQueryUrlBuilder:
   __max_salary: int
   __url: str
 
-  def __init__(self, universal_config: UniversalConfig, quick_settings: QuickSettings):
+  def __init__(self, universal_config: UniversalConfig, quick_settings: QuickSettings):   # pylint: disable=unused-argument
     self.__easy_apply_only = False
     if universal_config.search.location.city:
       self.__location = quote(universal_config.search.location.city.lower().replace(" ", "-"))
     else:
       # TODO: We need to figure out some better way to handle null
-      self.__location = quote("United States".lower().replace(" ", "-"))   
+      self.__location = quote("United States".lower().replace(" ", "-"))
     self.__remote = universal_config.search.location.remote
     if universal_config.search.misc.min_company_rating:
       self.__min_company_rating = universal_config.search.misc.min_company_rating

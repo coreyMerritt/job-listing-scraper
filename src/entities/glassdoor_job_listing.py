@@ -69,7 +69,7 @@ class GlassdoorJobListing(JobListing):
 
   def _init_description(self) -> None:
     description_div_selector = ".JobDetails_jobDescription__uW_fK.JobDetails_blurDescription__vN7nh"
-    timeout = 3
+    timeout = 3.0
     timed_out = True
     start_time = time.time()
     if self.__job_info_div:

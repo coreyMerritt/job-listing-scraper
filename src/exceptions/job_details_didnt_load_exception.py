@@ -1,0 +1,2 @@
+class JobDetailsDidntLoadException(Exception):
+  pass

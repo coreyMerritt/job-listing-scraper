@@ -1,0 +1,2 @@
+class JobListingIsAdvertisementException(Exception):
+  pass

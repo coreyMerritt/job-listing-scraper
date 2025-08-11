@@ -15,7 +15,7 @@ from selenium.common.exceptions import (
   TimeoutException
 )
 from entities.linkedin_job_listing import LinkedinJobListing
-from exceptions.no_matching_jobs_page_exception import NoMatchingJobsPageException
+from exceptions.zero_search_results_exception import ZeroSearchResultsException
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
 from models.enums.element_type import ElementType
@@ -72,7 +72,7 @@ class LinkedinJobListingsPage:
       except NoSuchElementException:
         logging.info("No Job Listings left -- Finished with query.")
         return
-      except NoMatchingJobsPageException:
+      except ZeroSearchResultsException:
         logging.info("No Job Listings left -- Finished with query.")
         return
       if self.__is_no_matching_jobs_page():
@@ -172,7 +172,7 @@ class LinkedinJobListingsPage:
             if self.__is_job_listings_ul():
               break
             if self.__is_no_matching_jobs_page():
-              raise NoMatchingJobsPageException()
+              raise ZeroSearchResultsException()
             logging.info("Waiting for next page to load...")
             time.sleep(0.1)
           return
@@ -328,7 +328,7 @@ class LinkedinJobListingsPage:
     elif self.__is_rate_limited_page():
       self.__handle_rate_limited_page()
     elif self.__is_no_matching_jobs_page():
-      raise NoMatchingJobsPageException()
+      raise ZeroSearchResultsException()
 
   def __something_went_wrong(self) -> bool:
     return self.__selenium_helper.exact_text_is_present(
