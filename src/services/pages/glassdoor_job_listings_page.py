@@ -20,22 +20,33 @@ from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.no_next_page_exception import NoNextPageException
 from exceptions.page_didnt_load_exception import PageDidntLoadException
 from exceptions.unable_to_determine_job_count_exception import UnableToDetermineJobCountException
+from exceptions.zero_search_results_exception import ZeroSearchResultsException
 from models.enums.element_type import ElementType
 from models.enums.platform import Platform
 from services.pages.abc_job_listings_page import JobListingsPage
 
 
 class GlassdoorJobListingsPage(JobListingsPage):
-  def _is_zero_results(self) -> bool:
+  def _is_zero_results(self, timeout=10.0) -> bool:
     search_results_class = "SearchResultsHeader_jobCount__eHngv"
-    search_results_h1 = self._driver.find_element(By.CLASS_NAME, search_results_class)
-    search_results_text = search_results_h1.text.lower().strip()
-    search_results_regex = re.match(r"^([0-9]+) .+", search_results_text)
-    if search_results_regex:
-      search_results_job_count = search_results_regex.group(1)
-      if search_results_job_count == "0":
-        return True
-      return False
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+      if self.__is_create_job_dialog():
+        self.__remove_create_job_dialog()
+      if self.__is_survey_popup():
+        self.__remove_survey_popup()
+      try:
+        search_results_h1 = self._driver.find_element(By.CLASS_NAME, search_results_class)
+        search_results_text = search_results_h1.text.lower().replace(",", "").strip()
+        search_results_regex = re.match(r"^([0-9]+) .+", search_results_text)
+        if search_results_regex:
+          search_results_job_count = search_results_regex.group(1)
+          if search_results_job_count == "0":
+            return True
+          return False
+      except NoSuchElementException:
+        logging.debug("NoSuchElementException. Trying again...")  # TODO: Improve msg
+        time.sleep(0.1)
     raise UnableToDetermineJobCountException()
 
   def _handle_incrementors(self, total_jobs_tried: int, job_listing_li_index: int) -> Tuple[int, int]:
@@ -125,8 +136,10 @@ class GlassdoorJobListingsPage(JobListingsPage):
       self.__remove_create_job_dialog()
     if self.__is_survey_popup():
       self.__remove_survey_popup()
-    self._driver.execute_script("arguments[0].removeAttribute('target')", job_listing_li)
-    job_listing_li.click()
+    a = job_listing_li.find_element(By.CSS_SELECTOR, "a.JobCard_trackingLink__HMyun")
+    self._driver.execute_script("arguments[0].removeAttribute('target')", a)
+    wrapper = job_listing_li.find_element(By.CSS_SELECTOR, "[data-test='job-card-wrapper']")
+    wrapper.click()
 
   def _get_job_details_div(self, timeout=30.0) -> WebElement:
     self.__wait_for_job_info_div()
@@ -157,6 +170,8 @@ class GlassdoorJobListingsPage(JobListingsPage):
         self.__remove_create_job_dialog()
       if self.__is_survey_popup():
         self.__remove_survey_popup()
+      if self.__is_no_results_found_page():
+        raise ZeroSearchResultsException()
       job_listings_ul = self._selenium_helper.get_element_by_aria_label("Jobs List")
     return job_listings_ul
 
@@ -196,6 +211,14 @@ class GlassdoorJobListingsPage(JobListingsPage):
     exit_button_id = "qual_close_open"
     exit_button = self._driver.find_element(By.ID, exit_button_id)
     exit_button.click()
+
+  def __is_no_results_found_page(self) -> bool:
+    no_results_found_h1_class = "ErrorPage_errorPageTitle__XtznY"
+    try:
+      self._driver.find_element(By.CLASS_NAME, no_results_found_h1_class)
+      return True
+    except NoSuchElementException:
+      return False
 
   def __safe_click_show_more_jobs_button(self, timeout=15.0) -> None:
     start_time = time.time()
@@ -301,7 +324,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
       except NoSuchElementException:
         logging.debug("Waiting for job listing li...")
         time.sleep(0.1)
-    raise NoSuchElementException("Failed waiting for job listing li.")
+    raise NoMoreJobListingsException
 
   def __wait_for_job_info_div(self, timeout=10) -> None:
     job_info_div_xpath = "/html/body/div[4]/div[4]/div[2]/div[2]/div/div[1]"

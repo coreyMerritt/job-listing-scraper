@@ -6,7 +6,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from entities.abc_job_listing import JobListing
 from exceptions.job_details_didnt_load_exception import JobDetailsDidntLoadException
 from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvertisementException
-from exceptions.no_such_job_listing_li_exception import NoSuchJobListingLiException
+from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
 from services.misc.database_manager import DatabaseManager
@@ -58,7 +58,7 @@ class JobListingsPage(ABC):
       except JobListingIsAdvertisementException:
         logging.info("Skipping Job Listing because it is an advertisement.")
         continue
-      except NoSuchJobListingLiException:
+      except NoMoreJobListingsException:
         logging.info("No Job Listings left -- Finished with query.")
         return
       logging.info("Scrolling Job Listing Li into view...")
@@ -96,7 +96,7 @@ class JobListingsPage(ABC):
       self._handle_potential_overload()
 
   @abstractmethod
-  def _is_zero_results(self) -> bool:
+  def _is_zero_results(self, timeout=10.0) -> bool:
     pass
 
   @abstractmethod
