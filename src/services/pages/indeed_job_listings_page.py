@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import List, Optional
+from typing import List, Optional, Set
 import psutil
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
@@ -12,9 +12,10 @@ from selenium.common.exceptions import (
 )
 from entities.indeed_job_listing import IndeedJobListing
 from models.configs.quick_settings import QuickSettings
-from models.enums.element_type import ElementType
+from models.configs.universal_config import UniversalConfig
 from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
+from services.misc.job_criteria_checker import JobCriteriaChecker
 from services.misc.selenium_helper import SeleniumHelper
 from services.misc.language_parser import LanguageParser
 
@@ -24,8 +25,10 @@ class IndeedJobListingsPage:
   __selenium_helper: SeleniumHelper
   __database_manager: DatabaseManager
   __language_parser: LanguageParser
+  __criteria_checker: JobCriteriaChecker
   __quick_settings: QuickSettings
-  __current_session_jobs: List[dict[str, str | float | None]]
+  __universal_config: UniversalConfig
+  __current_session_jobs: Set[str]
   __current_page_number: int
 
   def __init__(
@@ -34,14 +37,17 @@ class IndeedJobListingsPage:
     selenium_helper: SeleniumHelper,
     database_manager: DatabaseManager,
     language_parser: LanguageParser,
-    quick_settings: QuickSettings
+    quick_settings: QuickSettings,
+    universal_config: UniversalConfig
   ):
     self.__driver = driver
     self.__selenium_helper = selenium_helper
     self.__database_manager = database_manager
     self.__language_parser = language_parser
+    self.__criteria_checker = JobCriteriaChecker()
     self.__quick_settings = quick_settings
-    self.__current_session_jobs = []
+    self.__universal_config = universal_config
+    self.__current_session_jobs = set()
     self.__current_page_number = 1
 
   def is_present(self) -> bool:
@@ -58,7 +64,9 @@ class IndeedJobListingsPage:
     LIS_PER_PAGE = len(PROPER_JOB_INDEXES) + len(INVISIBLE_AD_INDEXES) + len(VISIBLE_AD_INDEXES)
     i = 0
     while True:
+      # Increment
       i += 1
+      # Next Page and Auto-skips
       job_listing_li_index = (i % LIS_PER_PAGE) + 1
       JOB_IS_ON_NEXT_PAGE = i > 1 and job_listing_li_index == 1
       if JOB_IS_ON_NEXT_PAGE:
@@ -70,77 +78,52 @@ class IndeedJobListingsPage:
       elif job_listing_li_index in INVISIBLE_AD_INDEXES + VISIBLE_AD_INDEXES:
         logging.debug("Job Listing is an ad. Skipping...")
         continue  # Don't try to run against ads
+      # Log
+      logging.info("Attempting Job Listing: %s...", i)
+      # Get Li, finished if cant
       job_listing_li = self.__get_job_listing_li(job_listing_li_index)
       if job_listing_li is None:
         logging.info("End of Job Listings.")
         return
+      # TODO: Lets add some sort of validation that confirms that this is actually a job listing li
+      # Scroll Li
+      self.__selenium_helper.scroll_into_view(job_listing_li)
+      # Make Brief
       brief_job_listing = self.__build_brief_job_listing(job_listing_li_index)
+      # Skip potential ads
       if brief_job_listing is None:
         logging.debug("Skipping a fake Job Listing / advertisement...")
         continue
-      self.__add_job_listing_to_db(brief_job_listing)
+      # Print Brief
       brief_job_listing.print()
-      if brief_job_listing.to_minimal_dict() in self.__current_session_jobs:
+      # If already handled, next
+      if brief_job_listing.to_minimal_str() in self.__current_session_jobs:
         logging.info("Ignoring Job Listing because: we've already applied this session.\n")
         continue
-      self.__open_job_in_new_tab(job_listing_li)
-      try:
-        self.__wait_for_new_job_tab_to_load()
-      except RuntimeError:
-        logging.debug("Some HTTP error... Skipping this job...")
-        self.__driver.close()
-        self.__driver.switch_to.window(self.__driver.window_handles[0])
+      # Add job to already handled
+      self.__current_session_jobs.add(brief_job_listing.to_minimal_str())
+      # Ensure job listing meets criteria
+      if not self.__criteria_checker.passes(self.__quick_settings, self.__universal_config, brief_job_listing):
+        logging.info("Ignoring Job Listing because it does not meet ignore/ideal criteria.")
         continue
+      # If not full scrape, add to do and next
+      if not self.__quick_settings.bot_behavior.full_scrape:
+        self.__add_job_listing_to_db(brief_job_listing)
+        continue
+      # Click Li
+      job_listing_li.click()
+      # Make job listing, if unknown error, raise
       job_listing = self.__build_job_listing(job_listing_li_index)
       if job_listing is None:
         raise RuntimeError("Job listing is None -- unknown error case")
-      self.__add_job_listing_to_db(job_listing)
-      while not self.__is_apply_now_span() and not self.__is_apply_on_company_site_span():
-        logging.debug("Waiting for apply button...")
-        time.sleep(0.5)
-      if self.__quick_settings.bot_behavior.easy_apply_only.indeed and self.__is_apply_on_company_site_span():
-        logging.info("Ignoring because job is not easy apply...")
+      # Ensure job listing meets criteria
+      if not self.__criteria_checker.passes(self.__quick_settings, self.__universal_config, job_listing):
+        logging.info("Ignoring Job Listing because it does not meet ignore/ideal criteria.")
         continue
-      self.__driver.switch_to.window(self.__driver.window_handles[0])
+      # Add to db
+      self.__add_job_listing_to_db(job_listing)
+      # Overload
       self.__handle_potential_overload()
-
-  def __get_job_listing_link(self, job_listing_li: WebElement) -> str:
-    job_listing_anchor = self.__get_job_listing_anchor(job_listing_li)
-    job_listing_link = job_listing_anchor.get_attribute("href")
-    assert job_listing_link
-    assert isinstance(job_listing_link, str)
-    return job_listing_link
-
-  def __open_job_in_new_tab(self, job_listing_li: WebElement) -> None:
-    job_listing_link = self.__get_job_listing_link(job_listing_li)
-    self.__selenium_helper.open_new_tab()
-    while True:
-      try:
-        self.__driver.get(job_listing_link)
-        break
-      except TimeoutException:
-        logging.warning("Failed to go to: %s -- Trying again...", job_listing_link)
-
-  def __wait_for_new_job_tab_to_load(self, timeout=10) -> None:
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-      if self.__selenium_helper.exact_text_is_present(
-        "Profile insights",
-        ElementType.H2
-      ):
-        return
-      elif self.__selenium_helper.exact_text_is_present(
-        "Job details",
-        ElementType.H2
-      ):
-        return
-      elif self.__selenium_helper.exact_text_is_present(
-        "We can’t find this page",
-        ElementType.H1
-      ):
-        raise RuntimeError("Failed to arrive at new job tab... \"We can't find this page\".")
-      logging.debug("Waiting for page to load...")
-      time.sleep(0.5)
 
   def __build_brief_job_listing(self, index: int, timeout=4.0) -> IndeedJobListing | None:
     start_time = time.time()
@@ -295,18 +278,6 @@ class IndeedJobListingsPage:
     if job_description_html:
       return job_description_html
     raise AttributeError("Job description div has no innerHTML attribute.")
-
-  def __is_apply_now_span(self) -> bool:
-    return self.__selenium_helper.exact_text_is_present(
-      "Apply now",
-      ElementType.SPAN
-    )
-
-  def __is_apply_on_company_site_span(self) -> bool:
-    return self.__selenium_helper.exact_text_is_present(
-      "Apply on company site",
-      ElementType.SPAN
-    )
 
   def __add_job_listing_to_db(self, job_listing: IndeedJobListing) -> None:
     self.__database_manager.create_new_job_listing(

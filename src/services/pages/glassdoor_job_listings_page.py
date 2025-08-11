@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import List
+from typing import Set
 import psutil
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
@@ -19,9 +19,12 @@ from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.page_didnt_load_exception import PageDidntLoadException
 from exceptions.service_is_down_exception import ServiceIsDownException
 from exceptions.zero_search_results_exception import ZeroSearchResultsException
+from models.configs.quick_settings import QuickSettings
+from models.configs.universal_config import UniversalConfig
 from models.enums.element_type import ElementType
 from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
+from services.misc.job_criteria_checker import JobCriteriaChecker
 from services.misc.selenium_helper import SeleniumHelper
 from services.misc.language_parser import LanguageParser
 
@@ -31,7 +34,10 @@ class GlassdoorJobListingsPage:
   __selenium_helper: SeleniumHelper
   __database_manager: DatabaseManager
   __language_parser: LanguageParser
-  __current_session_jobs: List[dict[str, str | float | None]]
+  __criteria_checker: JobCriteriaChecker
+  __quick_settings: QuickSettings
+  __universal_config: UniversalConfig
+  __current_session_jobs: Set[str]
   __show_more_jobs_button: GlassdoorShowMoreJobsButton | None
 
   def __init__(
@@ -39,13 +45,18 @@ class GlassdoorJobListingsPage:
     driver: uc.Chrome,
     selenium_helper: SeleniumHelper,
     database_manager: DatabaseManager,
-    language_parser: LanguageParser
+    language_parser: LanguageParser,
+    quick_settings: QuickSettings,
+    universal_config: UniversalConfig
   ):
     self.__driver = driver
     self.__selenium_helper = selenium_helper
     self.__database_manager = database_manager
     self.__language_parser = language_parser
-    self.__current_session_jobs = []
+    self.__criteria_checker = JobCriteriaChecker()
+    self.__quick_settings = quick_settings
+    self.__universal_config = universal_config
+    self.__current_session_jobs = set()
     self.__show_more_jobs_button = None
 
   def scrape_current_query(self) -> None:
@@ -54,10 +65,6 @@ class GlassdoorJobListingsPage:
     except ZeroSearchResultsException:
       logging.debug("Returned 0 results, skipping query.")
       return
-    while self.__page_didnt_load_is_present():
-      logging.debug("Waiting for page to load...")
-      time.sleep(0.5)
-    i = 0
     while self.__is_show_more_jobs_span():
       try:
         self.__safe_click_show_more_jobs_button()
@@ -65,35 +72,57 @@ class GlassdoorJobListingsPage:
         logging.error("Page didnt load. Skipping query and moving to next...")
         input("DEBUG: ^^^")
         return
+    i = 0
     while True:
+      # Increment
       i += 1
-      logging.debug("Looping through Job Listings: %s...", i)
-      self.__remove_create_job_dialog()
-      self.__remove_survey_popup()
+      # Log
+      logging.info("Attempting Job Listing: %s...", i)
+      # Get Li, finished if cant
       try:
         job_listing_li = self.__get_job_listing_li(i)
       except NoMoreJobListingsException:
         logging.info("No Job Listings remaining. Returning...")
         return
-      self.__selenium_helper.scroll_into_view(job_listing_li)
+      # Validate Li
       if not self.__is_job_listing(job_listing_li):
         continue
+      # Scroll Li
+      self.__selenium_helper.scroll_into_view(job_listing_li)
+      # Make Brief
       brief_job_listing = GlassdoorJobListing(self.__language_parser, job_listing_li)
-      self.__add_job_listing_to_db(brief_job_listing)
+      # Print Brief
       brief_job_listing.print()
-      if brief_job_listing.to_minimal_dict() in self.__current_session_jobs:
-        logging.info("Ignoring Job Listing because: we've already applied this session.\n")
+      # If already handled, next
+      if brief_job_listing.to_minimal_str() in self.__current_session_jobs:
+        logging.info("Ignoring Job Listing because we've already applied this session.\n")
         continue
-      self.__remove_create_job_dialog()
-      self.__remove_survey_popup()
-      job_listing_li.click()
+      # Add job to already handled
+      self.__current_session_jobs.add(brief_job_listing.to_minimal_str())
+      # Ensure job listing meets criteria
+      if not self.__criteria_checker.passes(self.__quick_settings, self.__universal_config, brief_job_listing):
+        logging.info("Ignoring Job Listing because it does not meet ignore/ideal criteria.")
+        continue
+      # If not full scrape, add to db and next
+      if not self.__quick_settings.bot_behavior.full_scrape:
+        self.__add_job_listing_to_db(brief_job_listing)
+        continue
+      # Click Job Listing
+      self.__safe_click_job_listing_li(job_listing_li)
+      # Make Job listing, if load error, skip
       try:
         job_listing = self.__build_job_listing(i)
       except TimeoutError:
         logging.warning("Job info div failed to load. Skipping...")
+        input("Ensure the job listing actually didn't load -- might be a timing issue")
         continue
+      # Ensure job listing meets criteria
+      if not self.__criteria_checker.passes(self.__quick_settings, self.__universal_config, job_listing):
+        logging.info("Ignoring Job Listing because it does not meet ignore/ideal criteria.")
+        continue
+      # Add to db
       self.__add_job_listing_to_db(job_listing)
-      self.__current_session_jobs.append(job_listing.to_minimal_dict())
+      # Overload
       self.__handle_potential_overload()
 
   def __confirm_page_stability(self, timeout=60.0) -> None:
@@ -169,12 +198,21 @@ class GlassdoorJobListingsPage:
       job_listings_ul = self.__selenium_helper.get_element_by_aria_label("Jobs List")
     return job_listings_ul
 
+  def __safe_click_job_listing_li(self, job_listing_li: WebElement) -> None:
+    self.__remove_create_job_dialog()
+    self.__remove_survey_popup()
+    job_listing_li.click()
+
   def __get_job_listing_li(self, index: int) -> WebElement:
     job_listings_ul = self.__get_job_listings_ul()
     while True:
       try:
         job_listing_li = job_listings_ul.find_element(By.XPATH, f"./li[{index}]")
         return job_listing_li
+      except ElementClickInterceptedException:
+        logging.debug("ElementClickInterceptedException. Attempting to remove popups and trying again...")
+        self.__remove_create_job_dialog()
+        self.__remove_survey_popup()
       except NoSuchElementException as e:
         if self.__is_show_more_jobs_span():
           self.__safe_click_show_more_jobs_button()

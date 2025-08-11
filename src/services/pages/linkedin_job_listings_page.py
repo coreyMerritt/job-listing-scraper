@@ -2,7 +2,7 @@ import logging
 import math
 import sys
 import time
-from typing import List, Tuple
+from typing import Set, Tuple
 import psutil
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
@@ -16,9 +16,12 @@ from selenium.common.exceptions import (
 )
 from entities.linkedin_job_listing import LinkedinJobListing
 from exceptions.no_matching_jobs_page_exception import NoMatchingJobsPageException
+from models.configs.quick_settings import QuickSettings
+from models.configs.universal_config import UniversalConfig
 from models.enums.element_type import ElementType
 from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
+from services.misc.job_criteria_checker import JobCriteriaChecker
 from services.misc.proxy_manager import ProxyManager
 from services.misc.selenium_helper import SeleniumHelper
 from services.misc.language_parser import LanguageParser
@@ -30,7 +33,10 @@ class LinkedinJobListingsPage:
   __database_manager: DatabaseManager
   __language_parser: LanguageParser
   __proxy_manager: ProxyManager
-  __current_session_jobs: List[dict[str, str | float | None]]
+  __criteria_checker: JobCriteriaChecker
+  __quick_settings: QuickSettings
+  __universal_config: UniversalConfig
+  __current_session_jobs: Set[str]
 
   def __init__(
     self,
@@ -38,20 +44,29 @@ class LinkedinJobListingsPage:
     selenium_helper: SeleniumHelper,
     database_manager: DatabaseManager,
     language_parser: LanguageParser,
-    proxy_manager: ProxyManager
+    proxy_manager: ProxyManager,
+    quick_settings: QuickSettings,
+    universal_config: UniversalConfig
   ):
     self.__driver = driver
     self.__selenium_helper = selenium_helper
     self.__database_manager = database_manager
     self.__language_parser = language_parser
     self.__proxy_manager = proxy_manager
-    self.__current_session_jobs = []
+    self.__criteria_checker = JobCriteriaChecker()
+    self.__quick_settings = quick_settings
+    self.__universal_config = universal_config
+    self.__current_session_jobs = set()
 
   def scrape_current_query(self) -> None:
     total_jobs_tried = 0
     job_listing_li_index = 0
     while True:
+      # Increment
       total_jobs_tried, job_listing_li_index = self.__handle_incrementors(total_jobs_tried, job_listing_li_index)
+      # Log
+      logging.info("Attempting Job Listing: %s...", total_jobs_tried)
+      # Validate page/context
       try:
         self.__handle_page_context(total_jobs_tried)
       except NoSuchElementException:
@@ -63,27 +78,46 @@ class LinkedinJobListingsPage:
       if self.__is_no_matching_jobs_page():
         logging.info("No matching jobs... Ending query.")
         return
+      # Get Li, finished if cant
       job_listing_li = self.__get_job_listing_li(job_listing_li_index)
       if job_listing_li is None:
         logging.info("No Job Listings left -- Finished with query.")
         return
+      # TODO: Lets get some sort of attr validation in here to confirm we have a true job listing li
+      # Scroll into view
+      self.__selenium_helper.scroll_into_view(job_listing_li)
+      # Make Brief
       brief_job_listing = self.__build_brief_job_listing(job_listing_li_index)
-      self.__add_job_listing_to_db(brief_job_listing)
+      # Print Brief
       brief_job_listing.print()
-      if brief_job_listing.to_minimal_dict() in self.__current_session_jobs:
+      # If already handled, next
+      if brief_job_listing.to_minimal_str() in self.__current_session_jobs:
         logging.info("Ignoring Brief Job Listing because we've already applied this session. Skipping...")
         continue
-      if self.__something_went_wrong():
-        logging.info('"Something went wrong", likely rate limited behavior. Skipping...')
+      # Add job to already handled
+      self.__current_session_jobs.add(brief_job_listing.to_minimal_str())
+      # Ensure job listing meets criteria
+      if not self.__criteria_checker.passes(self.__quick_settings, self.__universal_config, brief_job_listing):
+        logging.info("Ignoring Job Listing because it does not meet ignore/ideal criteria.")
         continue
+      # If not full scrape, add to db and next
+      if not self.__quick_settings.bot_behavior.full_scrape:
+        self.__add_job_listing_to_db(brief_job_listing)
+        continue
+      # Click Job Listing
       try:
         self.__select_job(job_listing_li)
       except StaleElementReferenceException:
         job_listing_li = self.__get_job_listing_li(job_listing_li_index)
+      # Make Job Listing
       job_listing = self.__build_job_listing(job_listing_li_index)
+      # Ensure job listing meets criteria
+      if not self.__criteria_checker.passes(self.__quick_settings, self.__universal_config, job_listing):
+        logging.info("Ignoring Job Listing because it does not meet ignore/ideal criteria.")
+        continue
+      # Add to db
       self.__add_job_listing_to_db(job_listing)
-      self.__driver.switch_to.window(self.__driver.window_handles[0])
-      self.__current_session_jobs.append(job_listing.to_minimal_dict())
+      # Overload
       self.__handle_potential_overload()
 
   def __handle_incrementors(self, total_jobs_tried: int, job_listing_li_index: int) -> Tuple[int, int]:
@@ -204,24 +238,25 @@ class LinkedinJobListingsPage:
         time.sleep(0.1)
     raise TimeoutException("Timed out waiting for job description content div.")
 
-  def __get_full_job_details_div(self) -> WebElement | None:
-    full_job_details_div_selector = ".jobs-details__main-content.jobs-details__main-content--single-pane.full-width"
-    main_content_div = self.__get_main_content_div()
-    if main_content_div is None:
-      return None
-    while True:
-      try:
-        full_job_details_div = main_content_div.find_element(By.CSS_SELECTOR, full_job_details_div_selector)
-        break
-      except NoSuchElementException:
-        self.__handle_potential_problems()
-        logging.debug("Waiting for full job details div to load...")
-        time.sleep(0.1)
-      except StaleElementReferenceException:
-        main_content_div = self.__get_main_content_div()
-        if main_content_div is None:
-          return None
-    return full_job_details_div
+  # TODO: Do we still need this?
+  # def __get_full_job_details_div(self) -> WebElement | None:
+  #   full_job_details_div_selector = ".jobs-details__main-content.jobs-details__main-content--single-pane.full-width"
+  #   main_content_div = self.__get_main_content_div()
+  #   if main_content_div is None:
+  #     return None
+  #   while True:
+  #     try:
+  #       full_job_details_div = main_content_div.find_element(By.CSS_SELECTOR, full_job_details_div_selector)
+  #       break
+  #     except NoSuchElementException:
+  #       self.__handle_potential_problems()
+  #       logging.debug("Waiting for full job details div to load...")
+  #       time.sleep(0.1)
+  #     except StaleElementReferenceException:
+  #       main_content_div = self.__get_main_content_div()
+  #       if main_content_div is None:
+  #         return None
+  #   return full_job_details_div
 
   def __get_job_listing_li(self, index: int) -> WebElement | None:
     relative_job_listing_li_xpath = f"./li[{index}]"

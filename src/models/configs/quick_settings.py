@@ -6,16 +6,11 @@ class ApplicationCriteria:
   not_in_ignore: bool = True
   is_in_ideal: bool = False
 
-@dataclass
-class EasyApplyOnly:
-  glassdoor: bool = True
-  indeed: bool = True
-  linkedin: bool = True
 
 @dataclass
 class BotBehavior:
-  application_criteria: ApplicationCriteria = field(default_factory=ApplicationCriteria)
-  easy_apply_only: EasyApplyOnly = field(default_factory=EasyApplyOnly)
+  full_scrape: bool = False
+  job_listing_criteria: ApplicationCriteria = field(default_factory=ApplicationCriteria)
   default_page_load_timeout: int = 30
   platform_order: list = field(default_factory=list)
 

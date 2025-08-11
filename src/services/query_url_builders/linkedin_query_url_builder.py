@@ -28,7 +28,7 @@ class LinkedinQueryUrlBuilder:
     self.__entry_level = universal_config.search.experience.entry
     self.__mid_level = universal_config.search.experience.mid
     self.__senior_level = universal_config.search.experience.senior
-    self.__easy_apply_only = quick_settings.bot_behavior.easy_apply_only.linkedin
+    self.__easy_apply_only = False
     self.__url = ""
 
   def build(self, search_term: str) -> str:

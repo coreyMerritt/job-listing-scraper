@@ -41,7 +41,8 @@ class IndeedOrchestrationEngine:
       selenium_helper,
       database_manager,
       language_parser,
-      quick_settings
+      quick_settings,
+      universal_config
     )
 
   def login(self) -> None:

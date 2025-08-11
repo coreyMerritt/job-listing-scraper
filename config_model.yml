@@ -4,13 +4,12 @@ quick_settings:
       - "linkedin"
       - "glassdoor"
       - "indeed"
-    application_criteria:
+    # This determines whether we click the jobs and scrape the detailed info
+    # If false, the following will be null: Description, Min YoE, Max YoE
+    full_scrape: false
+    job_listing_criteria:
       not_in_ignore: true
       is_in_ideal: false
-    easy_apply_only:
-      glassdoor: true
-      indeed: true
-      linkedin: true
     default_page_load_timeout: 30
 system:
   browser:

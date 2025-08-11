@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
+import json
 import logging
 from models.enums.language import Language
 from services.misc.language_parser import LanguageParser
@@ -179,6 +180,9 @@ class JobListing(ABC):
       "max_yoe": self.get_max_yoe(),
       "description": self.get_description()
     }
+
+  def to_minimal_str(self) -> str:
+    return json.dumps(self.to_minimal_dict(), sort_keys=True)
 
   def _parse_yoe_from_description(self) -> None:
     description = self.get_description()

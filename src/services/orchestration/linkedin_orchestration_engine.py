@@ -44,7 +44,9 @@ class LinkedinOrchestrationEngine:
       selenium_helper,
       database_manager,
       language_parser,
-      proxy_manager
+      proxy_manager,
+      quick_settings,
+      universal_config
     )
 
   def login(self) -> None:

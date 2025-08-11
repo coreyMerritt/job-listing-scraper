@@ -14,11 +14,12 @@ class GlassdoorQueryUrlBuilder:
   __url: str
 
   def __init__(self, universal_config: UniversalConfig, quick_settings: QuickSettings):
-    self.__easy_apply_only = quick_settings.bot_behavior.easy_apply_only.glassdoor
+    self.__easy_apply_only = False
     if universal_config.search.location.city:
-      self.__location = universal_config.search.location.city
+      self.__location = quote(universal_config.search.location.city.lower().replace(" ", "-"))
     else:
-      self.__location = "United%20States"   # TODO: We need to figure out some better way to handle null
+      # TODO: We need to figure out some better way to handle null
+      self.__location = quote("United States".lower().replace(" ", "-"))   
     self.__remote = universal_config.search.location.remote
     if universal_config.search.misc.min_company_rating:
       self.__min_company_rating = universal_config.search.misc.min_company_rating
@@ -28,11 +29,13 @@ class GlassdoorQueryUrlBuilder:
     if universal_config.search.salary.min:
       self.__min_salary = universal_config.search.salary.min
     else:
-      self.__min_salary = 0           # TODO: We need to figure out some better way to handle null
+      # TODO: We need to figure out some better way to handle null
+      self.__min_salary = 0
     if universal_config.search.salary.max:
       self.__max_salary = universal_config.search.salary.max
     else:
-      self.__max_salary = 1000000      # TODO: We need to figure out some better way to handle null
+      # TODO: We need to figure out some better way to handle null
+      self.__max_salary = 1000000
     self.__url = ""
 
   def build(self, search_term: str) -> str:
@@ -51,13 +54,19 @@ class GlassdoorQueryUrlBuilder:
     self.__url = "https://www.glassdoor.com/Job/"
 
   def __add_location(self) -> None:
-    location = quote(self.__location)
-    self.__url += location
+    self.__url += self.__location
 
   def __add_search_term(self, term: str) -> None:
-    location_length_plus_one = len(self.__location) + 1
-    location_length_plus_one_plus_term_length = location_length_plus_one + len(term)
-    self.__url += f"-{term}-jobs-SRCH_IL.0,13_IN1_KO{location_length_plus_one},{location_length_plus_one_plus_term_length}.htm?"    # pylint: disable=line-too-long
+    encoded_location = self.__location
+    encoded_term = quote(term)
+    location_start = 0
+    location_end = len(encoded_location)
+    term_start = location_end + 1
+    term_end = term_start + len(encoded_term)
+    self.__url += (
+      f"-{encoded_term}-jobs-SRCH_IL.{location_start},{location_end}"
+      f"_IN1_KO{term_start},{term_end}.htm?"
+    )
 
   def __add_remote(self) -> None:
     if self.__remote:

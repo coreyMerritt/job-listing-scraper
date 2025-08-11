@@ -43,7 +43,9 @@ class GlassdoorOrchestrationEngine:
       driver,
       selenium_helper,
       database_manager,
-      language_parser
+      language_parser,
+      quick_settings,
+      universal_config
     )
 
 
