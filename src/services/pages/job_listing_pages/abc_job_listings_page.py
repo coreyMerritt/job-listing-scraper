@@ -12,6 +12,7 @@ from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvert
 from exceptions.job_listing_opens_in_window_exception import JobListingOpensInWindowException
 from exceptions.memory_overload_exception import MemoryOverloadException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
+from exceptions.no_results_found_page_exception import NoResultsFoundPageException
 from exceptions.page_froze_exception import PageFrozeException
 from exceptions.something_went_wrong_page_exception import SomethingWentWrongPageException
 from models.configs.quick_settings import QuickSettings
@@ -55,14 +56,25 @@ class JobListingsPage(ABC):
     self._current_session_jobs = set()
 
   def scrape_current_query(self) -> None:
-    if self._is_zero_results():
-      logging.info("0 results. Skipping query...")
-      return
+    zero_results_count = 0
+    while self._is_zero_results():
+      zero_results_count += 1
+      if zero_results_count > 3:
+        logging.info("0 results. Skipping query...")
+        return
+      else:
+        self._driver.refresh()
     total_jobs_tried = 0
     job_listing_li_index = 0
     while True:
       try:
         total_jobs_tried, job_listing_li_index = self._handle_incrementors(total_jobs_tried, job_listing_li_index)
+        if self._need_next_page(job_listing_li_index):
+          if self._is_next_page():
+            logging.info("Going to next page...")
+            self._go_to_next_page()
+          else:
+            raise NoMoreJobListingsException()
         logging.info("Attempting Job Listing: %s...", total_jobs_tried)
         logging.info("Trying to get Job Listing Li...")
         job_listing_li = self._get_job_listing_li(job_listing_li_index)
@@ -115,16 +127,15 @@ class JobListingsPage(ABC):
         logging.info("Adding Job Listing to Database...")
         self._add_job_listing_to_db(job_listing)
         self._handle_potential_overload()
-        if self._need_next_page(job_listing_li_index):
-          if self._is_next_page():
-            self._go_to_next_page()
-          else:
-            raise NoMoreJobListingsException()
       except JobListingIsAdvertisementException:
         logging.info("Skipping Job Listing because it is an advertisement.")
         continue
       except JobListingOpensInWindowException:
         logging.warning("Alternate render detected. Refreshing and trying again...")
+        if len(self._driver.window_handles) > 1:
+          self._driver.switch_to.window(self._driver.window_handles[-1])
+          self._driver.close()
+          self._driver.switch_to.window(self._driver.window_handles[0])
         self._driver.refresh()
         self.scrape_current_query()
         return
@@ -132,6 +143,11 @@ class JobListingsPage(ABC):
         traceback.print_exc()
         input("Are there truly no more job listings?")
         logging.info("No Job Listings left -- Finished with query.")
+        return
+      except NoResultsFoundPageException:
+        logging.info("Detected No Results Found Page. Refreshing and trying query again...")
+        self._driver.refresh()
+        self.scrape_current_query()
         return
       except SomethingWentWrongPageException:
         logging.warning("Something went wrong page detected. Refreshing and trying query again...")

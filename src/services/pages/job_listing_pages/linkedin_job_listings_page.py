@@ -146,7 +146,7 @@ class LinkedinJobListingsPage(JobListingsPage):
 
   def _need_next_page(self, job_listing_li_index: int) -> bool:
     try:
-      self._get_job_listing_li(job_listing_li_index + 1, 1)
+      self._get_job_listing_li(job_listing_li_index, 1)
       return False
     except NoMoreJobListingsException:
       return True

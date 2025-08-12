@@ -18,10 +18,10 @@ from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvert
 from exceptions.job_listing_opens_in_window_exception import JobListingOpensInWindowException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.no_next_page_exception import NoNextPageException
+from exceptions.no_results_found_page_exception import NoResultsFoundPageException
 from exceptions.page_didnt_load_exception import PageDidntLoadException
 from exceptions.page_froze_exception import PageFrozeException
 from exceptions.unable_to_determine_job_count_exception import UnableToDetermineJobCountException
-from exceptions.zero_search_results_exception import ZeroSearchResultsException
 from models.enums.element_type import ElementType
 from models.enums.platform import Platform
 from services.pages.job_listing_pages.abc_job_listings_page import JobListingsPage
@@ -40,11 +40,12 @@ class GlassdoorJobListingsPage(JobListingsPage):
         search_results_h1 = self._driver.find_element(By.CLASS_NAME, search_results_class)
         search_results_text = search_results_h1.text.lower().replace(",", "").strip()
         search_results_regex = re.match(r"^([0-9]+) .+", search_results_text)
-        if search_results_regex:
-          search_results_job_count = search_results_regex.group(1)
-          if search_results_job_count == "0":
-            return True
-          return False
+        assert search_results_regex
+        search_results_job_count = search_results_regex.group(1)
+        logging.debug("Found %s results.", search_results_job_count)
+        if search_results_job_count == "0":
+          return True
+        return False
       except NoSuchElementException:
         logging.debug("NoSuchElementException. Trying again...")  # TODO: Improve msg
         time.sleep(0.1)
@@ -154,11 +155,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
     return job_details_div
 
   def _need_next_page(self, job_listing_li_index: int) -> bool:
-    try:
-      self._get_job_listing_li(job_listing_li_index + 1, 1)
-      return False
-    except NoMoreJobListingsException:
-      return True
+    return self._is_next_page()
 
   def _is_next_page(self) -> bool:
     self._selenium_helper.scroll_to_bottom()
@@ -170,14 +167,12 @@ class GlassdoorJobListingsPage(JobListingsPage):
       return False
 
   def _go_to_next_page(self, timeout=15.0) -> None:
-    start_time = time.time()
-    while time.time() - start_time < timeout:
+    while self._is_next_page():
       try:
         starting_li_count = len(self.__get_job_listings_ul().find_elements(By.TAG_NAME, "li"))
         show_more_jobs_button = self.__get_show_more_jobs_button()
         show_more_jobs_button.click()
         self.__wait_for_more_job_listings(starting_li_count)
-        return
       except ElementNotInteractableException:
         logging.debug("ElementNotInteractableException. Checking for dialogs and trying again...")
         if self.__is_create_job_dialog():
@@ -195,7 +190,8 @@ class GlassdoorJobListingsPage(JobListingsPage):
       except StaleElementReferenceException:
         self.__get_show_more_jobs_button()
         time.sleep(0.1)
-    raise TimeoutError("Timed out trying to show more jobs.")
+
+
 
   def __get_job_listings_ul(self) -> WebElement:
     try:
@@ -214,7 +210,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
       if self.__is_survey_popup():
         self.__remove_survey_popup()
       if self.__is_no_results_found_page():
-        raise ZeroSearchResultsException() from e
+        raise NoResultsFoundPageException() from e
       job_listings_ul = self._selenium_helper.get_element_by_aria_label("Jobs List")
     return job_listings_ul
 
