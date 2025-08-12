@@ -123,6 +123,8 @@ class GlassdoorJobListing(JobListing):
           except NoSuchElementException:
             logging.debug("Waiting for job description div to load...")
             time.sleep(0.1)
+        if description_div:
+          break
       if timed_out:
         raise TimeoutError("Timed out waiting for job description div to load.")
       raw_description = description_div.get_attribute("innerHTML")
