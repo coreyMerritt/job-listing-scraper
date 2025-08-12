@@ -13,6 +13,7 @@ from selenium.common.exceptions import (
   TimeoutException
 )
 from entities.job_listings.glassdoor_job_listing import GlassdoorJobListing
+from exceptions.glassdoor_zero_jobs_bug_exception import GlassdoorZeroJobsBugException
 from exceptions.job_details_didnt_load_exception import JobDetailsDidntLoadException
 from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvertisementException
 from exceptions.job_listing_opens_in_window_exception import JobListingOpensInWindowException
@@ -169,10 +170,14 @@ class GlassdoorJobListingsPage(JobListingsPage):
   def _go_to_next_page(self, timeout=15.0) -> None:
     while self._is_next_page():
       try:
+        no_jobs_regex = r"^0 .+ Jobs in .+"
+        assert not re.search(no_jobs_regex, self._driver.title)
         starting_li_count = len(self.__get_job_listings_ul().find_elements(By.TAG_NAME, "li"))
         show_more_jobs_button = self.__get_show_more_jobs_button()
         show_more_jobs_button.click()
         self.__wait_for_more_job_listings(starting_li_count)
+        if re.search(no_jobs_regex, self._driver.title):
+          raise GlassdoorZeroJobsBugException()
       except ElementNotInteractableException:
         logging.debug("ElementNotInteractableException. Checking for dialogs and trying again...")
         if self.__is_create_job_dialog():

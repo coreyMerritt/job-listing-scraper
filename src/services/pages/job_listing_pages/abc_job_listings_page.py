@@ -7,6 +7,7 @@ import undetected_chromedriver as uc
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import StaleElementReferenceException
 from entities.job_listings.abc_job_listing import JobListing
+from exceptions.glassdoor_zero_jobs_bug_exception import GlassdoorZeroJobsBugException
 from exceptions.job_details_didnt_load_exception import JobDetailsDidntLoadException
 from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvertisementException
 from exceptions.job_listing_opens_in_window_exception import JobListingOpensInWindowException
@@ -128,6 +129,11 @@ class JobListingsPage(ABC):
         logging.info("Adding Job Listing to Database...")
         self._add_job_listing_to_db(job_listing)
         self._handle_potential_overload()
+      except GlassdoorZeroJobsBugException:
+        logging.info("Show more jobs button spawned zero jobs. Refreshing and trying again...")
+        self._driver.refresh()
+        self.scrape_current_query()
+        return
       except JobListingIsAdvertisementException:
         logging.info("Skipping Job Listing because it is an advertisement.")
         continue

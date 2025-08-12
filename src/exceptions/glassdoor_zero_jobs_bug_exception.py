@@ -1,0 +1,2 @@
+class GlassdoorZeroJobsBugException(Exception):
+  pass
