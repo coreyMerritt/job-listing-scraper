@@ -145,11 +145,7 @@ class LinkedinJobListingsPage(JobListingsPage):
     raise NoSuchElementException("Failed to find full job details div.")
 
   def _need_next_page(self, job_listing_li_index: int) -> bool:
-    try:
-      self._get_job_listing_li(job_listing_li_index, 1)
-      return False
-    except NoMoreJobListingsException:
-      return True
+    return job_listing_li_index == 1
 
   def _is_next_page(self) -> bool:
     main_content_div = self.__get_main_content_div()
