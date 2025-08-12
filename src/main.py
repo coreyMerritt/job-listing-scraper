@@ -7,8 +7,8 @@ import traceback
 import yaml
 import undetected_chromedriver as uc
 from dacite import from_dict
+from exceptions.rate_limited_exception import RateLimitedException
 from models.configs.full_config import FullConfig
-from models.enums.ignore_type import IgnoreType
 from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
 from services.misc.proxy_manager import ProxyManager
@@ -49,6 +49,7 @@ class Start:
       self.__selenium_helper,
       self.__database_manager,
       self.__language_parser,
+      self.__proxy_manager,
       self.__config.universal,
       self.__config.quick_settings,
       self.__config.indeed
@@ -58,6 +59,7 @@ class Start:
       self.__selenium_helper,
       self.__database_manager,
       self.__language_parser,
+      self.__proxy_manager,
       self.__config.universal,
       self.__config.quick_settings,
       self.__config.glassdoor
@@ -102,6 +104,9 @@ class Start:
           self.__indeed_orchestration_engine.scrape()
       input("\n\tPress enter to exit...")
       self.__remove_all_tabs_except_first()
+    except RateLimitedException as e:
+      self.__proxy_manager.log_rate_limit_block(e.get_platform())
+      raise e
     except Exception:
       traceback.print_exc()
       input("\tPress enter to exit...")
@@ -133,5 +138,9 @@ class Start:
       self.__driver.close()
     self.__driver.switch_to.window(self.__driver.window_handles[0])
 
-
-Start().execute()
+while True:
+  try:
+    job_listing_scraper = Start()
+    job_listing_scraper.execute()
+  except RateLimitedException as e:
+    input("Rate limiting has been logged in db. Press Enter restart the system...")

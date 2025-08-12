@@ -11,8 +11,8 @@ from selenium.common.exceptions import (
 )
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from entities.abc_job_listing import JobListing
-from entities.indeed_job_listing import IndeedJobListing
+from entities.job_listings.abc_job_listing import JobListing
+from entities.job_listings.indeed_job_listing import IndeedJobListing
 from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvertisementException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from models.enums.platform import Platform
@@ -57,24 +57,10 @@ class IndeedJobListingsPage(JobListingsPage):
             raise JobListingIsAdvertisementException()
       card_outline = job_listing_li.find_element(By.CSS_SELECTOR, "div.cardOutline")
       if card_outline.get_attribute("aria-hidden") == "true":
-          raise JobListingIsAdvertisementException()
+        raise JobListingIsAdvertisementException()
       return job_listing_li
     except NoSuchElementException as e:
       raise NoMoreJobListingsException() from e
-
-  def _is_next_page(self) -> bool:
-    visible_page_numbers = self.__get_visible_page_numbers()
-    current_page_number = self.__get_current_page_number()
-    if current_page_number + 1 in visible_page_numbers:
-      return True
-    return False
-
-  def _go_to_next_page(self) -> None:
-    next_page_anchor = self.__get_next_page_anchor()
-    try:
-      next_page_anchor.click()
-    except TimeoutException:
-      logging.warning("Received a TimeoutException that has historically shown to not be an issue. Continuing...")
 
   def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=30.0) -> IndeedJobListing | None:
     try:
@@ -92,6 +78,9 @@ class IndeedJobListingsPage(JobListingsPage):
       job_listing,
       Platform.INDEED
     )
+
+  def _anti_rate_limit_wait(self) -> None:
+    pass
 
   def _click_job(self, job_listing_li: WebElement, timeout=10) -> None:
     WebDriverWait(self._driver, timeout).until(
@@ -135,6 +124,27 @@ class IndeedJobListingsPage(JobListingsPage):
     if current_memory_usage > 90:
       print("\nCurrent memory usage is too high. Please clean up existing tabs to continue safely.")
       input("\tPress enter to proceed...")
+
+  def _need_next_page(self, job_listing_li_index: int) -> bool:
+    try:
+      self._get_job_listing_li(job_listing_li_index + 1, 1)
+      return False
+    except NoMoreJobListingsException:
+      return True
+
+  def _is_next_page(self) -> bool:
+    visible_page_numbers = self.__get_visible_page_numbers()
+    current_page_number = self.__get_current_page_number()
+    if current_page_number + 1 in visible_page_numbers:
+      return True
+    return False
+
+  def _go_to_next_page(self) -> None:
+    next_page_anchor = self.__get_next_page_anchor()
+    try:
+      next_page_anchor.click()
+    except TimeoutException:
+      logging.warning("Received a TimeoutException that has historically shown to not be an issue. Continuing...")
 
   def __get_job_listings_ul(self) -> WebElement:
     potential_job_listings_ul_xpaths = [

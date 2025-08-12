@@ -4,30 +4,15 @@ import time
 from datetime import datetime, timedelta, timezone
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import NoSuchElementException
-from entities.abc_job_listing import JobListing
-from services.misc.language_parser import LanguageParser
+from entities.job_listings.abc_job_listing import JobListing
 
 
 class GlassdoorJobListing(JobListing):
-  __job_listing_li: WebElement
-  __job_info_div: WebElement | None
-
-  def __init__(
-    self,
-    language_parser: LanguageParser,
-    job_listing_li: WebElement,
-    job_info_div: WebElement | None = None
-  ):
-    self.__job_listing_li = job_listing_li
-    self.__job_info_div = job_info_div
-    super().__init__(language_parser)
-
   def _init_min_pay(self) -> None:
     try:
       job_salary_div_class = "JobCard_salaryEstimate__QpbTW"
-      job_salary_div = self.__job_listing_li.find_element(By.CLASS_NAME, job_salary_div_class)
+      job_salary_div = self._get_job_listing_li().find_element(By.CLASS_NAME, job_salary_div_class)
       job_salary_div_text = job_salary_div.text
       min_salary_from_range_regex = r"\$([0-9]+)[k|K] - \$[0-9]+[k|K]"
       min_salary_from_range_match = re.match(min_salary_from_range_regex, job_salary_div_text)
@@ -60,7 +45,7 @@ class GlassdoorJobListing(JobListing):
   def _init_max_pay(self) -> None:
     try:
       job_salary_div_class = "JobCard_salaryEstimate__QpbTW"
-      job_salary_div = self.__job_listing_li.find_element(By.CLASS_NAME, job_salary_div_class)
+      job_salary_div = self._get_job_listing_li().find_element(By.CLASS_NAME, job_salary_div_class)
       job_salary_div_text = job_salary_div.text
       max_salary_from_range_regex = r"\$[0-9]+[k|K] - \$([0-9]+)[k|K]"
       max_salary_from_range_match = re.match(max_salary_from_range_regex, job_salary_div_text)
@@ -92,22 +77,22 @@ class GlassdoorJobListing(JobListing):
 
   def _init_title(self) -> None:
     job_title_anchor_class = "JobCard_jobTitle__GLyJ1"
-    job_title_anchor = self.__job_listing_li.find_element(By.CLASS_NAME, job_title_anchor_class)
+    job_title_anchor = self._get_job_listing_li().find_element(By.CLASS_NAME, job_title_anchor_class)
     self.set_title(job_title_anchor.text.strip())
 
   def _init_company(self) -> None:
     company_span_class = "EmployerProfile_compactEmployerName__9MGcV"
-    company_span = self.__job_listing_li.find_element(By.CLASS_NAME, company_span_class)
+    company_span = self._get_job_listing_li().find_element(By.CLASS_NAME, company_span_class)
     self.set_company(company_span.text.strip())
 
   def _init_location(self) -> None:
     location_div_class = "JobCard_location__Ds1fM"
-    location_div = self.__job_listing_li.find_element(By.CLASS_NAME, location_div_class)
+    location_div = self._get_job_listing_li().find_element(By.CLASS_NAME, location_div_class)
     self.set_location(location_div.text.strip())
 
   def _init_url(self) -> None:
     title_anchor_class = "JobCard_jobTitle__GLyJ1"
-    title_anchor = self.__job_listing_li.find_element(By.CLASS_NAME, title_anchor_class)
+    title_anchor = self._get_job_listing_li().find_element(By.CLASS_NAME, title_anchor_class)
     job_url = title_anchor.get_attribute("href")
     assert job_url
     self.set_url(job_url)
@@ -124,10 +109,11 @@ class GlassdoorJobListing(JobListing):
     timeout = 3.0
     timed_out = True
     start_time = time.time()
-    if self.__job_info_div:
+    job_details_div = self._get_job_details_div()
+    if job_details_div:
       while time.time() - start_time < timeout:
         try:
-          description_div = self.__job_info_div.find_element(By.CSS_SELECTOR, description_div_selector)
+          description_div = job_details_div.find_element(By.CSS_SELECTOR, description_div_selector)
           timed_out = False
           break
         except NoSuchElementException:
@@ -147,7 +133,7 @@ class GlassdoorJobListing(JobListing):
   def _init_post_time(self) -> None:
     listing_age_class = "JobCard_listingAge__jJsuc"
     try:
-      listing_age = self.__job_listing_li.find_element(By.CLASS_NAME, listing_age_class)
+      listing_age = self._get_job_listing_li().find_element(By.CLASS_NAME, listing_age_class)
       listing_age_text = listing_age.text
       hours = re.match(r"([0-9]+)h", listing_age_text)
       if hours:

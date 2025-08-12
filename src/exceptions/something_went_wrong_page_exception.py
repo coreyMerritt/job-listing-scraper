@@ -1,0 +1,2 @@
+class SomethingWentWrongPageException(Exception):
+  pass

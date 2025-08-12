@@ -8,7 +8,7 @@ from services.misc.database_manager import DatabaseManager
 from services.misc.proxy_manager import ProxyManager
 from services.misc.selenium_helper import SeleniumHelper
 from services.pages.linkedin_login_page import LinkedinLoginPage
-from services.pages.linkedin_job_listings_page import LinkedinJobListingsPage
+from services.pages.job_listing_pages.linkedin_job_listings_page import LinkedinJobListingsPage
 from services.query_url_builders.linkedin_query_url_builder import LinkedinQueryUrlBuilder
 from services.misc.language_parser import LanguageParser
 

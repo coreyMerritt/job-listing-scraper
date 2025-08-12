@@ -5,32 +5,28 @@ from bs4 import BeautifulSoup
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-from entities.abc_job_listing import JobListing
+from entities.job_listings.abc_job_listing import JobListing
 from services.misc.language_parser import LanguageParser
 
 
 class LinkedinJobListing(JobListing):
-  __job_listing_li: WebElement
-  __url: str | None
-  __job_description_content_div: WebElement | None
+  __job_header_div: WebElement | None
 
   def __init__(
     self,
     language_parser: LanguageParser,
     job_listing_li: WebElement,
-    job_description_content_div: WebElement | None = None,
-    url: str | None = None
+    job_details_div: WebElement | None = None,
+    job_header_div: WebElement | None = None
   ):
-    self.__job_listing_li = job_listing_li
-    self.__url = url
-    self.__job_description_content_div = job_description_content_div
-    super().__init__(language_parser)
+    self.__job_header_div = job_header_div
+    super().__init__(language_parser, job_listing_li, job_details_div)
 
   # Actually initializes min and max pay -- its not super easy to seperate them without redundant calulcations
   def _init_min_pay(self) -> None:
     try:
       relative_pay_div_xpath = "./div/a/div/div/div[2]/div[1]/div[4]/div[1]"
-      pay_div = self.__job_listing_li.find_element(By.XPATH, relative_pay_div_xpath)
+      pay_div = self._get_job_listing_li().find_element(By.XPATH, relative_pay_div_xpath)
       self.__handle_linkedin_pay(pay_div.text)
     except NoSuchElementException:
       self.set_min_pay(None)
@@ -41,27 +37,30 @@ class LinkedinJobListing(JobListing):
 
   def _init_title(self) -> None:
     relative_job_title_span_xpath = "./div/a/div/div/div[2]/div[1]/div[1]/span[1]/strong"
-    job_title_span = self.__job_listing_li.find_element(By.XPATH, relative_job_title_span_xpath)
+    job_title_span = self._get_job_listing_li().find_element(By.XPATH, relative_job_title_span_xpath)
     self.set_title(job_title_span.text)
 
   def _init_company(self) -> None:
     relative_company_div_xpath = "./div/a/div/div/div[2]/div[1]/div[2]/div"
-    company_div = self.__job_listing_li.find_element(By.XPATH, relative_company_div_xpath)
+    company_div = self._get_job_listing_li().find_element(By.XPATH, relative_company_div_xpath)
     self.set_company(company_div.text)
 
   def _init_location(self) -> None:
     relative_location_div_xpath = "./div/a/div/div/div[2]/div[1]/div[3]/div"
-    location_div = self.__job_listing_li.find_element(By.XPATH, relative_location_div_xpath)
+    location_div = self._get_job_listing_li().find_element(By.XPATH, relative_location_div_xpath)
     self.set_location(location_div.text)
 
   def _init_url(self) -> None:
-    if self.__url:
-      self.set_url(self.__url)
-    else:
-      job_listing_anchor = self.__job_listing_li.find_element(By.XPATH, "./div/a")
-      url = job_listing_anchor.get_attribute("href")
-      assert url
-      self.set_url(url)
+    url_anchor_xpath = "./div/a"
+    url_anchor = self._get_job_listing_li().find_element(By.XPATH, url_anchor_xpath)
+    href = url_anchor.get_attribute("href")
+    assert href
+    job_id_regex = r"currentJobId=([0-9]+)"
+    match = re.search(job_id_regex, href)
+    assert match
+    job_id = match.group(1)
+    url = f"https://www.linkedin.com/jobs/view/{job_id}"
+    self.set_url(url)
 
   # Actually initializes min and max yoe
   def _init_min_yoe(self) -> None:
@@ -71,9 +70,10 @@ class LinkedinJobListing(JobListing):
     pass
 
   def _init_description(self) -> None:
-    if self.__job_description_content_div:
-      self.__wait_for_populated_description(self.__job_description_content_div)
-      raw_description = self.__job_description_content_div.get_attribute("outerHTML") or ""
+    job_details_div = self._get_job_details_div()
+    if job_details_div:
+      self.__wait_for_populated_description(job_details_div)
+      raw_description = job_details_div.get_attribute("outerHTML") or ""
       soup = BeautifulSoup(raw_description, "html.parser")
       description = soup.get_text(separator="\n", strip=True)
       self.set_description(description)
@@ -81,9 +81,45 @@ class LinkedinJobListing(JobListing):
       self.set_description(None)
 
   def _init_post_time(self) -> None:
+    if self.__job_header_div:
+      job_details_html = self.__job_header_div.get_attribute("innerHTML")
+      assert job_details_html
+      full_text_match_regex = r"([0-9]+) (.+) ago"
+      full_text_match = re.search(full_text_match_regex, job_details_html)
+      assert full_text_match
+      amount, unit = full_text_match.groups()
+      if "minute" in unit:
+        minutes = float(amount)
+        self.set_post_time(datetime.now(timezone.utc) - timedelta(minutes=minutes))
+        return
+      elif "hour" in unit:
+        hours = float(amount)
+        self.set_post_time(datetime.now(timezone.utc) - timedelta(hours=hours))
+        return
+      elif "day" in unit:
+        days = float(amount)
+        self.set_post_time(datetime.now(timezone.utc) - timedelta(days=days))
+        return
+      elif "week" in unit:
+        weeks = float(amount)
+        self.set_post_time(datetime.now(timezone.utc) - timedelta(weeks=weeks))
+        return
+      elif "month" in unit:
+        months = float(amount)
+        self.set_post_time(datetime.now(timezone.utc) - timedelta(weeks=(months * 4.345)))
+        return
+      elif "year" in unit:
+        years = float(amount)
+        self.set_post_time(datetime.now(timezone.utc) - timedelta(weeks=(years * 52)))
+        return
     try:
-      listing_age = self.__job_listing_li.find_element(By.TAG_NAME, "time")
+      listing_age = self._get_job_listing_li().find_element(By.TAG_NAME, "time")
       listing_age_text = listing_age.text
+      minutes = re.match(r"([0-9]+) minute[s]? ago", listing_age_text)
+      if minutes:
+        minutes = int(minutes.group(1))
+        self.set_post_time(datetime.now(timezone.utc) - timedelta(minutes=minutes))
+        return
       hours = re.match(r"([0-9]+) hour[s]? ago", listing_age_text)
       if hours:
         hours = int(hours.group(1))

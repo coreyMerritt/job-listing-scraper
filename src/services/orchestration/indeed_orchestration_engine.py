@@ -7,10 +7,11 @@ from models.configs.indeed_config import IndeedConfig
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
 from services.misc.database_manager import DatabaseManager
+from services.misc.proxy_manager import ProxyManager
 from services.misc.selenium_helper import SeleniumHelper
 from services.pages.indeed_login_page import IndeedLoginPage
 from services.pages.indeed_one_time_code_page import IndeedOneTimeCodePage
-from services.pages.indeed_job_listings_page import IndeedJobListingsPage
+from services.pages.job_listing_pages.indeed_job_listings_page import IndeedJobListingsPage
 from services.query_url_builders.indeed_query_url_builder import IndeedQueryUrlBuilder
 from services.misc.language_parser import LanguageParser
 
@@ -28,6 +29,7 @@ class IndeedOrchestrationEngine:
     selenium_helper: SeleniumHelper,
     database_manager: DatabaseManager,
     language_parser: LanguageParser,
+    proxy_manager: ProxyManager,
     universal_config: UniversalConfig,
     quick_settings: QuickSettings,
     indeed_config: IndeedConfig
@@ -41,6 +43,7 @@ class IndeedOrchestrationEngine:
       selenium_helper,
       database_manager,
       language_parser,
+      proxy_manager,
       quick_settings,
       universal_config
     )

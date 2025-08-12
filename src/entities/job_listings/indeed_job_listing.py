@@ -1,27 +1,11 @@
 import re
 from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
-from entities.abc_job_listing import JobListing
-from services.misc.language_parser import LanguageParser
+from entities.job_listings.abc_job_listing import JobListing
 
 
 class IndeedJobListing(JobListing):
-  __job_listing_li: WebElement
-  __job_details_div: WebElement | None
-  __url: str | None
-
-  def __init__(
-    self,
-    language_parser: LanguageParser,
-    job_listing_li: WebElement,
-    job_details_div: WebElement | None = None
-  ):
-    self.__job_listing_li = job_listing_li
-    self.__job_details_div = job_details_div
-    super().__init__(language_parser)
-
   def _init_min_pay(self) -> None:
     pay_h2_selector = ".mosaic-provider-jobcards-4n9q2y.e1tiznh50"
     try:
@@ -146,4 +130,3 @@ class IndeedJobListing(JobListing):
   def _init_post_time(self) -> None:
     # Indeed actually doesnt expose this data -- hilarious
     self.set_post_time(None)
-

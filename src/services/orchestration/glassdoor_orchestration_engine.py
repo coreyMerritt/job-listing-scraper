@@ -8,6 +8,7 @@ from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
 from models.enums.element_type import ElementType
 from services.misc.database_manager import DatabaseManager
+from services.misc.proxy_manager import ProxyManager
 from services.query_url_builders.glassdoor_query_url_builder import GlassdoorQueryUrlBuilder
 from services.misc.selenium_helper import SeleniumHelper
 from services.pages.glassdoor_login_page import GlassdoorLoginPage
@@ -29,6 +30,7 @@ class GlassdoorOrchestrationEngine:
     selenium_helper: SeleniumHelper,
     database_manager: DatabaseManager,
     language_parser: LanguageParser,
+    proxy_manager: ProxyManager,
     universal_config: UniversalConfig,
     quick_settings: QuickSettings,
     glassdoor_config: GlassdoorConfig
@@ -43,6 +45,7 @@ class GlassdoorOrchestrationEngine:
       selenium_helper,
       database_manager,
       language_parser,
+      proxy_manager,
       quick_settings,
       universal_config
     )

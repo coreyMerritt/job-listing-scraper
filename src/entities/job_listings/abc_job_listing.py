@@ -2,12 +2,15 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 import json
 import logging
+from selenium.webdriver.remote.webelement import WebElement
 from models.enums.language import Language
 from services.misc.language_parser import LanguageParser
 from services.misc.yoe_parser import YoeParser
 
 
 class JobListing(ABC):
+  __job_listing_li: WebElement
+  __job_details_div: WebElement | None
   __title: str
   __company: str
   __location: str
@@ -20,7 +23,14 @@ class JobListing(ABC):
   __description: str | None
   __post_time: datetime | None
 
-  def __init__(self, language_parser: LanguageParser):
+  def __init__(
+    self,
+    language_parser: LanguageParser,
+    job_listing_li: WebElement,
+    job_details_div: WebElement | None = None
+  ):
+    self.__job_listing_li = job_listing_li
+    self.__job_details_div = job_details_div
     self._init_title()
     self._init_company()
     self._init_location()
@@ -112,6 +122,12 @@ class JobListing(ABC):
 
   def get_post_time(self) -> datetime | None:
     return self.__post_time
+
+  def _get_job_listing_li(self) -> WebElement:
+    return self.__job_listing_li
+
+  def _get_job_details_div(self) -> WebElement | None:
+    return self.__job_details_div
 
   def set_min_pay(self, pay: float | None) -> None:
     self.__min_pay = pay

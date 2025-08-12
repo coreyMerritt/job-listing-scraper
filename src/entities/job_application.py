@@ -1,7 +1,7 @@
 import logging
 import re
 from typing import List
-from entities.abc_job_listing import JobListing
+from entities.job_listings.abc_job_listing import JobListing
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import SearchSalary, UniversalConfig, YearsOfExperience
 from models.enums.language import Language
