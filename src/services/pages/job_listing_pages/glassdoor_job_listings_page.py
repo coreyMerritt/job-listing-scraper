@@ -2,7 +2,6 @@ import logging
 import re
 import time
 from typing import Tuple
-import psutil
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import (
@@ -16,6 +15,7 @@ from selenium.common.exceptions import (
 from entities.job_listings.glassdoor_job_listing import GlassdoorJobListing
 from exceptions.job_details_didnt_load_exception import JobDetailsDidntLoadException
 from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvertisementException
+from exceptions.job_listing_opens_in_window_exception import JobListingOpensInWindowException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.no_next_page_exception import NoNextPageException
 from exceptions.page_didnt_load_exception import PageDidntLoadException
@@ -71,11 +71,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
         if self.__is_survey_popup():
           self.__remove_survey_popup()
       except NoSuchElementException as e:
-        if self._is_next_page():
-          self._go_to_next_page()
-          self.__wait_for_new_job_listing_li(job_listing_li_index + 1)
-        else:
-          raise NoMoreJobListingsException() from e
+        raise NoMoreJobListingsException() from e
       except StaleElementReferenceException:
         logging.debug("Failed to get Job Listing li. Trying again...")
         job_listings_ul = self.__get_job_listings_ul()
@@ -100,12 +96,12 @@ class GlassdoorJobListingsPage(JobListingsPage):
     self,
     job_listing_li: WebElement,
     job_details_div: WebElement,
-    timeout=30.0
+    timeout=10.0
   ) -> GlassdoorJobListing:
-    self.__wait_for_job_description()
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:
+        self._get_job_details_div()
         self._selenium_helper.scroll_into_view(job_listing_li)
         job_listing = GlassdoorJobListing(
           self._language_parser,
@@ -114,7 +110,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
         )
         return job_listing
       except StaleElementReferenceException:
-        if not self.__job_info_div_is_present():
+        if not self.__job_details_div_is_present():
           if self.__page_didnt_load_is_present():
             self.__reload_job_description()
         logging.warning("StaleElementReferenceException while trying to build job listing. Trying again...")
@@ -142,25 +138,20 @@ class GlassdoorJobListingsPage(JobListingsPage):
         self.__remove_create_job_dialog()
       if self.__is_survey_popup():
         self.__remove_survey_popup()
-      a = job_listing_li.find_element(By.CSS_SELECTOR, "a.JobCard_trackingLink__HMyun")
-      self._driver.execute_script("arguments[0].removeAttribute('target')", a)
-      wrapper = job_listing_li.find_element(By.CSS_SELECTOR, "[data-test='job-card-wrapper']")
-      wrapper.click()
+      start_tab_count = len(self._driver.window_handles)
+      job_listing_li.click()
+      if "/job-listing/" in self._driver.current_url:
+        raise JobListingOpensInWindowException()
+      if len(self._driver.window_handles) > start_tab_count:
+        raise JobListingOpensInWindowException()
     except ElementClickInterceptedException as e:
       raise PageFrozeException() from e
 
-  def _get_job_details_div(self, timeout=30.0) -> WebElement:
-    self.__wait_for_job_info_div()
-    job_info_div_xpath = "/html/body/div[4]/div[4]/div[2]/div[2]/div/div[1]"
-    job_info_div = self._driver.find_element(By.XPATH, job_info_div_xpath)
-    return job_info_div
-
-  def _handle_potential_overload(self) -> None:
-    current_memory_usage = psutil.virtual_memory().percent
-    logging.debug("Current memory usage: %s%s", current_memory_usage, "%")
-    if current_memory_usage > 90:
-      print("\nCurrent memory usage is too high. Please clean up existing tabs to continue safely.")
-      input("\tPress enter to proceed...")
+  def _get_job_details_div(self, timeout=10.0) -> WebElement:
+    self.__wait_for_job_details_div(timeout)
+    job_details_div_xpath = "/html/body/div[4]/div[4]/div[2]/div[2]/div/div[1]"
+    job_details_div = self._driver.find_element(By.XPATH, job_details_div_xpath)
+    return job_details_div
 
   def _need_next_page(self, job_listing_li_index: int) -> bool:
     try:
@@ -272,23 +263,10 @@ class GlassdoorJobListingsPage(JobListingsPage):
     except NoSuchElementException:
       return False
 
-  def __wait_for_job_description(self, timeout=15.0) -> None:
-    description_div_selector = ".JobDetails_jobDescription__uW_fK.JobDetails_blurDescription__vN7nh"
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-      try:
-        job_info_div = self._get_job_details_div()
-        job_info_div.find_element(By.CSS_SELECTOR, description_div_selector)
-        return
-      except NoSuchElementException:
-        logging.debug("Waiting for job description to load...")
-        time.sleep(0.1)
-    raise JobDetailsDidntLoadException()
-
-  def __job_info_div_is_present(self) -> bool:
-    job_info_div_xpath = "/html/body/div[4]/div[4]/div[2]/div[2]/div/div[1]"
+  def __job_details_div_is_present(self) -> bool:
+    job_details_div_xpath = "/html/body/div[4]/div[4]/div[2]/div[2]/div/div[1]"
     try:
-      self._driver.find_element(By.XPATH, job_info_div_xpath)
+      self._driver.find_element(By.XPATH, job_details_div_xpath)
       return True
     except NoSuchElementException:
       return False
@@ -301,7 +279,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
     parent_span = try_again_span.find_element(By.XPATH, "..")
     try_again_button = parent_span.find_element(By.XPATH, "..")
     try_again_button.click()
-    self.__wait_for_job_info_div()
+    self.__wait_for_job_details_div()
 
   def __get_show_more_jobs_button(self, timeout=10.0) -> WebElement:
     if not self._is_next_page():
@@ -329,25 +307,27 @@ class GlassdoorJobListingsPage(JobListingsPage):
       if self._is_next_page():
         raise JavascriptException("Button did not produce more <li>s")
 
-  def __wait_for_new_job_listing_li(self, index: int, timeout=10) -> None:
+  def __wait_for_job_details_div(self, timeout=10.0) -> None:
     start_time = time.time()
-    job_listings_ul = self.__get_job_listings_ul()
     while time.time() - start_time < timeout:
       try:
-        job_listings_ul.find_element(By.XPATH, f"./li[{index}]")
+        job_details_div_xpath = "/html/body/div[4]/div[4]/div[2]/div[2]/div/div[1]"
+        job_details_div = self._driver.find_element(By.XPATH, job_details_div_xpath)
+        job_details_html = job_details_div.get_attribute("innerHTML")
+        if not job_details_html:
+          logging.debug("Waiting for job description to load... [HTML]")
+          time.sleep(0.1)
+          continue
+        if not len(job_details_html) > 100:
+          logging.debug("Waiting for job description to load... [LEN]")
+          time.sleep(0.1)
+          continue
+        if not "Show more" in job_details_html:
+          logging.debug("Waiting for job description to load... [SHOW MORE]")
+          time.sleep(0.1)
+          continue
         return
       except NoSuchElementException:
-        logging.debug("Waiting for job listing li...")
+        logging.debug("Waiting for job description to load... [NOSUCHELE]")
         time.sleep(0.1)
-    raise NoMoreJobListingsException
-
-  def __wait_for_job_info_div(self, timeout=10) -> None:
-    job_info_div_xpath = "/html/body/div[4]/div[4]/div[2]/div[2]/div/div[1]"
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-      try:
-        self._driver.find_element(By.XPATH, job_info_div_xpath)
-        break
-      except NoSuchElementException:
-        logging.debug("Waiting for job info div to load...")
-        time.sleep(0.1)
+    raise JobDetailsDidntLoadException()

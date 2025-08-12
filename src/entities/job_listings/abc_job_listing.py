@@ -162,7 +162,7 @@ class JobListing(ABC):
   def set_post_time(self, post_time: datetime | None) -> None:
     self.__post_time = post_time
 
-  def print(self) -> None:
+  def print_all(self) -> None:
     if self.get_description():
       description_indentation="\n\n"
     else:
@@ -176,6 +176,20 @@ class JobListing(ABC):
       self.get_max_pay(),
       description_indentation,
       self.get_description()
+    )
+
+  def print_most(self) -> None:
+    logging.info(
+      "\n\nPost Time:\t%s\nLanguage:\t%s\n\nTitle:\t\t%s\nCompany:\t%s\nLocation:\t%s\nMin Pay:\t%s\nMax Pay:\t%s\nMin YoE:\t%s\nMax YoE:\t%s\n",   # pylint: disable=line-too-long
+      self.get_post_time(),
+      self.get_language().value,
+      self.get_title(),
+      self.get_company(),
+      self.get_location(),
+      self.get_min_pay(),
+      self.get_max_pay(),
+      self.get_min_yoe(),
+      self.get_max_yoe(),
     )
 
   def to_minimal_dict(self) -> dict[str, str | float | None]:

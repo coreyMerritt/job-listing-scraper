@@ -1,0 +1,2 @@
+class MemoryOverloadException(Exception):
+  pass

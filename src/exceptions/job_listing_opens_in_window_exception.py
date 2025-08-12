@@ -1,0 +1,2 @@
+class JobListingOpensInWindowException(Exception):
+  pass

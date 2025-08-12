@@ -105,20 +105,24 @@ class GlassdoorJobListing(JobListing):
     pass
 
   def _init_description(self) -> None:
-    description_div_selector = ".JobDetails_jobDescription__uW_fK.JobDetails_blurDescription__vN7nh"
+    description_div_selectors = [
+      ".JobDetails_jobDescription__uW_fK.JobDetails_blurDescription__vN7nh",
+      ".JobDetails_jobDescription__uW_fK.JobDetails_showHidden__C_FOA"
+    ]
     timeout = 3.0
     timed_out = True
     start_time = time.time()
     job_details_div = self._get_job_details_div()
     if job_details_div:
       while time.time() - start_time < timeout:
-        try:
-          description_div = job_details_div.find_element(By.CSS_SELECTOR, description_div_selector)
-          timed_out = False
-          break
-        except NoSuchElementException:
-          logging.debug("Waiting for job description div to load...")
-          time.sleep(0.1)
+        for selector in description_div_selectors:
+          try:
+            description_div = job_details_div.find_element(By.CSS_SELECTOR, selector)
+            timed_out = False
+            break
+          except NoSuchElementException:
+            logging.debug("Waiting for job description div to load...")
+            time.sleep(0.1)
       if timed_out:
         raise TimeoutError("Timed out waiting for job description div to load.")
       raw_description = description_div.get_attribute("innerHTML")

@@ -1,12 +1,16 @@
 from abc import ABC, abstractmethod
-import logging
+import traceback
 from typing import Set, Tuple
+import logging
+import psutil
 import undetected_chromedriver as uc
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import StaleElementReferenceException
 from entities.job_listings.abc_job_listing import JobListing
 from exceptions.job_details_didnt_load_exception import JobDetailsDidntLoadException
 from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvertisementException
+from exceptions.job_listing_opens_in_window_exception import JobListingOpensInWindowException
+from exceptions.memory_overload_exception import MemoryOverloadException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.page_froze_exception import PageFrozeException
 from exceptions.something_went_wrong_page_exception import SomethingWentWrongPageException
@@ -61,16 +65,12 @@ class JobListingsPage(ABC):
         total_jobs_tried, job_listing_li_index = self._handle_incrementors(total_jobs_tried, job_listing_li_index)
         logging.info("Attempting Job Listing: %s...", total_jobs_tried)
         logging.info("Trying to get Job Listing Li...")
-        try:
-          job_listing_li = self._get_job_listing_li(job_listing_li_index)
-        except JobListingIsAdvertisementException:
-          logging.info("Skipping Job Listing because it is an advertisement.")
-          continue
+        job_listing_li = self._get_job_listing_li(job_listing_li_index)
         logging.info("Scrolling Job Listing Li into view...")
         self._selenium_helper.scroll_into_view(job_listing_li)
         logging.info("Building Brief Job Listing...")
         brief_job_listing = self._build_brief_job_listing(job_listing_li)
-        brief_job_listing.print()
+        brief_job_listing.print_most()
         if brief_job_listing.to_minimal_str() in self._current_session_jobs:
           logging.info("Ignoring Brief Job Listing because we've already applied this session. Skipping...")
           continue
@@ -107,7 +107,8 @@ class JobListingsPage(ABC):
             self._add_job_listing_to_db(brief_job_listing)
           else:
             logging.warning("Job Details failed to load. Skipping...")
-            continue
+          continue
+        job_listing.print_most()
         if not self._criteria_checker.passes(self._quick_settings, self._universal_config, job_listing):
           logging.info("Ignoring Job Listing because it does not meet ignore/ideal criteria.")
           continue
@@ -119,7 +120,17 @@ class JobListingsPage(ABC):
             self._go_to_next_page()
           else:
             raise NoMoreJobListingsException()
+      except JobListingIsAdvertisementException:
+        logging.info("Skipping Job Listing because it is an advertisement.")
+        continue
+      except JobListingOpensInWindowException:
+        logging.warning("Alternate render detected. Refreshing and trying again...")
+        self._driver.refresh()
+        self.scrape_current_query()
+        return
       except NoMoreJobListingsException:
+        traceback.print_exc()
+        input("Are there truly no more job listings?")
         logging.info("No Job Listings left -- Finished with query.")
         return
       except SomethingWentWrongPageException:
@@ -127,6 +138,12 @@ class JobListingsPage(ABC):
         self._driver.refresh()
         self.scrape_current_query()
         return
+
+  def _handle_potential_overload(self) -> None:
+    current_memory_usage = psutil.virtual_memory().percent
+    logging.debug("Current memory usage: %s%s", current_memory_usage, "%")
+    if current_memory_usage > 90:
+      raise MemoryOverloadException()
 
   @abstractmethod
   def _is_zero_results(self, timeout=10.0) -> bool:
@@ -162,10 +179,6 @@ class JobListingsPage(ABC):
 
   @abstractmethod
   def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10.0) -> JobListing:
-    pass
-
-  @abstractmethod
-  def _handle_potential_overload(self) -> None:
     pass
 
   @abstractmethod

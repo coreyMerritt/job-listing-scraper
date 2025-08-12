@@ -1,7 +1,6 @@
 import logging
 import time
 from typing import List, Tuple
-import psutil
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import (
@@ -117,13 +116,6 @@ class IndeedJobListingsPage(JobListingsPage):
         logging.warning("NoSuchElementException while trying to build job listing. Trying again...")
         time.sleep(0.1)
     raise TimeoutException("Timed out trying to build job listing.")
-
-  def _handle_potential_overload(self) -> None:
-    current_memory_usage = psutil.virtual_memory().percent
-    logging.debug("Current memory usage: %s%s", current_memory_usage, "%")
-    if current_memory_usage > 90:
-      print("\nCurrent memory usage is too high. Please clean up existing tabs to continue safely.")
-      input("\tPress enter to proceed...")
 
   def _need_next_page(self, job_listing_li_index: int) -> bool:
     try:

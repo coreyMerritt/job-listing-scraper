@@ -1,10 +1,8 @@
 import logging
 import random
 import re
-import sys
 import time
 from typing import Tuple
-import psutil
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import (
@@ -146,13 +144,6 @@ class LinkedinJobListingsPage(JobListingsPage):
         time.sleep(0.1)
     raise NoSuchElementException("Failed to find full job details div.")
 
-  def _handle_potential_overload(self) -> None:
-    current_memory_usage = psutil.virtual_memory().percent
-    logging.debug("Current memory usage: %s%s", current_memory_usage, "%")
-    if current_memory_usage > 90:
-      print("\nCurrent memory usage is too high. Please clean up existing tabs to continue safely.")
-      input("\tPress enter to proceed...")
-
   def _need_next_page(self, job_listing_li_index: int) -> bool:
     try:
       self._get_job_listing_li(job_listing_li_index + 1, 1)
@@ -236,7 +227,7 @@ class LinkedinJobListingsPage(JobListingsPage):
       self._driver.refresh()
       time.sleep(5)   # It seems that if you don't wait here, the issue will arise again -- likely rate limiting
     elif self.__is_rate_limited_page():
-      self.__handle_rate_limited_page()
+      raise RateLimitedException(Platform.LINKEDIN)
     elif self.__is_no_matching_jobs_page():
       raise ZeroSearchResultsException()
 
@@ -265,9 +256,3 @@ class LinkedinJobListingsPage(JobListingsPage):
       return True
     except NoSuchElementException:
       return False
-
-  def __handle_rate_limited_page(self) -> None:
-    # TODO: Still brainstorming how to properly handle this
-    self._proxy_manager.log_rate_limit_block(Platform.LINKEDIN)
-    input("Rate limited. :( Finish what's available and start again.")
-    sys.exit(0)

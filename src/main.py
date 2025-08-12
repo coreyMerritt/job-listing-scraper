@@ -7,6 +7,7 @@ import traceback
 import yaml
 import undetected_chromedriver as uc
 from dacite import from_dict
+from exceptions.memory_overload_exception import MemoryOverloadException
 from exceptions.rate_limited_exception import RateLimitedException
 from models.configs.full_config import FullConfig
 from models.enums.platform import Platform
@@ -90,17 +91,12 @@ class Start:
         platform = str(some_platform).lower()
         if platform == Platform.LINKEDIN.value.lower():
           self.__linkedin_orchestration_engine.login()
-        elif platform == Platform.GLASSDOOR.value.lower():
-          self.__glassdoor_orchestration_engine.login()
-        elif platform == Platform.INDEED.value.lower():
-          self.__indeed_orchestration_engine.login()
-      for some_platform in self.__config.quick_settings.bot_behavior.platform_order:
-        platform = str(some_platform).lower()
-        if platform == Platform.LINKEDIN.value.lower():
           self.__linkedin_orchestration_engine.scrape()
         elif platform == Platform.GLASSDOOR.value.lower():
+          self.__glassdoor_orchestration_engine.login()
           self.__glassdoor_orchestration_engine.scrape()
         elif platform == Platform.INDEED.value.lower():
+          self.__indeed_orchestration_engine.login()
           self.__indeed_orchestration_engine.scrape()
       input("\n\tPress enter to exit...")
       self.__remove_all_tabs_except_first()
@@ -142,5 +138,8 @@ while True:
   try:
     job_listing_scraper = Start()
     job_listing_scraper.execute()
+  except MemoryOverloadException:
+    print("\nCurrent memory usage is too high. Please clean up existing tabs to continue safely.")
+    input("\tPress enter to proceed...")
   except RateLimitedException as e:
     input("Rate limiting has been logged in db. Press Enter restart the system...")

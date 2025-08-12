@@ -75,7 +75,7 @@ class GlassdoorLoginPage:
           time.sleep(0.5)
         break
       except TimeoutException:
-        self.login()    # This is experimental, not sure this is safe yet
+        pass
     WebDriverWait(self.__driver, 20).until(
       lambda d: expected_landing_url in d.current_url
     )
