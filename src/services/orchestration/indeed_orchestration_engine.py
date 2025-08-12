@@ -60,13 +60,6 @@ class IndeedOrchestrationEngine:
       self.__indeed_one_time_code_page.resolve_with_mail_dot_com()
     self.__indeed_one_time_code_page.wait_for_captcha_resolution()
 
-  # def scrape(self) -> None:
-  #   self.__go_to_query()
-  #   while not self.__indeed_job_listings_page.is_present():
-  #     logging.debug("Waiting for Job Listings page to appear...")
-  #     time.sleep(0.5)
-  #   self.__indeed_job_listings_page.scrape_current_query()
-
   def scrape(self) -> None:
     search_terms = self.__universal_config.search.terms.match
     for search_term in search_terms:
@@ -90,17 +83,3 @@ class IndeedOrchestrationEngine:
       self.__driver.get(url)
     except TimeoutException:
       pass
-
-  # def __go_to_query(self) -> None:
-  #   query_url_builder = IndeedQueryUrlBuilder(self.__universal_config)
-  #   query_url = query_url_builder.build()
-  #   logging.debug("Going to %s...",  query_url)
-  #   self.__driver.get(query_url)
-  #   verification_element_name = "q"
-  #   while True:
-  #     try:
-  #       self.__driver.find_element(By.NAME, verification_element_name)
-  #       break
-  #     except NoSuchElementException:
-  #       logging.debug("Waiting for page verification element to appear...")
-  #       time.sleep(0.5)
