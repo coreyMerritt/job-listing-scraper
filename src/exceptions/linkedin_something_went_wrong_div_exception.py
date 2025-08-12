@@ -1,0 +1,2 @@
+class LinkedinSomethingWentWrongException(Exception):
+  pass

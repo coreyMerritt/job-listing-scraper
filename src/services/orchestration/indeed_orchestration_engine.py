@@ -1,8 +1,7 @@
 import logging
 import time
 import undetected_chromedriver as uc
-from selenium.common.exceptions import JavascriptException, TimeoutException
-from exceptions.service_is_down_exception import ServiceIsDownException
+from selenium.common.exceptions import TimeoutException
 from models.configs.indeed_config import IndeedConfig
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig

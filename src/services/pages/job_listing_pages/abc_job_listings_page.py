@@ -11,6 +11,7 @@ from exceptions.glassdoor_zero_jobs_bug_exception import GlassdoorZeroJobsBugExc
 from exceptions.job_details_didnt_load_exception import JobDetailsDidntLoadException
 from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvertisementException
 from exceptions.job_listing_opens_in_window_exception import JobListingOpensInWindowException
+from exceptions.linkedin_something_went_wrong_div_exception import LinkedinSomethingWentWrongException
 from exceptions.memory_overload_exception import MemoryOverloadException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.no_results_found_page_exception import NoResultsFoundPageException
@@ -134,6 +135,9 @@ class JobListingsPage(ABC):
         self._driver.refresh()
         self.scrape_current_query()
         return
+      except LinkedinSomethingWentWrongException:
+        logging.info("Found something went wrong div. Skipping...")
+        continue
       except JobListingIsAdvertisementException:
         logging.info("Skipping Job Listing because it is an advertisement.")
         continue

@@ -13,6 +13,7 @@ from selenium.common.exceptions import (
 )
 from entities.job_listings.abc_job_listing import JobListing
 from entities.job_listings.linkedin_job_listing import LinkedinJobListing
+from exceptions.linkedin_something_went_wrong_div_exception import LinkedinSomethingWentWrongException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.no_results_data_exception import NoResultsDataException
 from exceptions.rate_limited_exception import RateLimitedException
@@ -142,6 +143,8 @@ class LinkedinJobListingsPage(JobListingsPage):
       except NoSuchElementException:
         logging.warning("NoSuchElementException while trying to build job listing. Trying again...")
         time.sleep(0.1)
+    if self.__is_something_went_wrong_div():
+      raise LinkedinSomethingWentWrongException()
     raise NoSuchElementException("Failed to find full job details div.")
 
   def _need_next_page(self, job_listing_li_index: int) -> bool:
@@ -219,7 +222,7 @@ class LinkedinJobListingsPage(JobListingsPage):
   def __handle_potential_problems(self) -> None:
     if self.__is_job_safety_reminder_popup():
       self.__remove_job_search_safety_reminder_popup()
-    elif self.__something_went_wrong():
+    elif self.__is_something_went_wrong_div():
       self._driver.refresh()
       time.sleep(5)   # It seems that if you don't wait here, the issue will arise again -- likely rate limiting
     elif self.__is_rate_limited_page():
@@ -227,7 +230,7 @@ class LinkedinJobListingsPage(JobListingsPage):
     elif self.__is_no_matching_jobs_page():
       raise ZeroSearchResultsException()
 
-  def __something_went_wrong(self) -> bool:
+  def __is_something_went_wrong_div(self) -> bool:
     return self._selenium_helper.exact_text_is_present(
       "Something went wrong",
       ElementType.H2
