@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import traceback
 from typing import Set, Tuple
 import logging
 import psutil
@@ -156,8 +155,6 @@ class JobListingsPage(ABC):
         print(psutil.virtual_memory().percent)
         input("How much memory did we save???")
       except NoMoreJobListingsException:
-        traceback.print_exc()
-        input("Are there truly no more job listings?")
         logging.info("No Job Listings left -- Finished with query.")
         return
       except NoResultsFoundPageException:

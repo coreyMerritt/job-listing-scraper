@@ -80,8 +80,14 @@ class Start:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
-    scrape_parser = subparsers.add_parser("scrape", help="Scrapes job info.")
+    scrape_parser = subparsers.add_parser("scrape")
     scrape_parser.set_defaults(func=self.scrape)
+    glassdoor_parser = subparsers.add_parser("glassdoor")
+    glassdoor_parser.set_defaults(func=self.glassdoor)
+    indeed_parser = subparsers.add_parser("indeed")
+    indeed_parser.set_defaults(func=self.indeed)
+    linkedin_parser = subparsers.add_parser("linkedin")
+    linkedin_parser.set_defaults(func=self.linkedin)
     args = parser.parse_args()
     args.func(args)
 
@@ -99,6 +105,54 @@ class Start:
           self.__indeed_orchestration_engine.login()
           self.__indeed_orchestration_engine.scrape()
       self.__remove_all_tabs_except_first()
+    except MemoryOverloadException as e:
+      raise e
+    except RateLimitedException as e:
+      self.__proxy_manager.log_rate_limit_block(e.get_platform())
+      raise e
+    except Exception:
+      traceback.print_exc()
+      input("\tPress enter to exit...")
+    finally:
+      self.__driver.quit()
+
+  def glassdoor(self, args: argparse.Namespace):    # pylint: disable=unused-argument
+    try:
+      self.__glassdoor_orchestration_engine.login()
+      while True:
+        self.__glassdoor_orchestration_engine.scrape()
+    except MemoryOverloadException as e:
+      raise e
+    except RateLimitedException as e:
+      self.__proxy_manager.log_rate_limit_block(e.get_platform())
+      raise e
+    except Exception:
+      traceback.print_exc()
+      input("\tPress enter to exit...")
+    finally:
+      self.__driver.quit()
+
+  def indeed(self, args: argparse.Namespace):    # pylint: disable=unused-argument
+    try:
+      self.__indeed_orchestration_engine.login()
+      while True:
+        self.__indeed_orchestration_engine.scrape()
+    except MemoryOverloadException as e:
+      raise e
+    except RateLimitedException as e:
+      self.__proxy_manager.log_rate_limit_block(e.get_platform())
+      raise e
+    except Exception:
+      traceback.print_exc()
+      input("\tPress enter to exit...")
+    finally:
+      self.__driver.quit()
+
+  def linkedin(self, args: argparse.Namespace):    # pylint: disable=unused-argument
+    try:
+      self.__linkedin_orchestration_engine.login()
+      while True:
+        self.__linkedin_orchestration_engine.scrape()
     except MemoryOverloadException as e:
       raise e
     except RateLimitedException as e:
