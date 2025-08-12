@@ -78,7 +78,7 @@ class JobListingsPage(ABC):
               self._go_to_next_page()
             else:
               raise NoMoreJobListingsException()
-        logging.info("Attempting Job Listing: %s...", total_jobs_tried)
+        logging.info("Attempting Job Listing: %s...", f"{total_jobs_tried:,}")
         logging.info("Trying to get Job Listing Li...")
         job_listing_li = self._get_job_listing_li(job_listing_li_index)
         logging.info("Scrolling Job Listing Li into view...")
