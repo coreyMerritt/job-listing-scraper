@@ -150,6 +150,11 @@ class JobListingsPage(ABC):
         self._driver.refresh()
         self.scrape_current_query()
         return
+      except MemoryOverloadException:
+        print(psutil.virtual_memory().percent)
+        self._current_session_jobs = set()
+        print(psutil.virtual_memory().percent)
+        input("How much memory did we save???")
       except NoMoreJobListingsException:
         traceback.print_exc()
         input("Are there truly no more job listings?")

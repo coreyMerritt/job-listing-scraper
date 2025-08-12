@@ -98,8 +98,9 @@ class Start:
         elif platform == Platform.INDEED.value.lower():
           self.__indeed_orchestration_engine.login()
           self.__indeed_orchestration_engine.scrape()
-      input("\n\tPress enter to exit...")
       self.__remove_all_tabs_except_first()
+    except MemoryOverloadException as e:
+      raise e
     except RateLimitedException as e:
       self.__proxy_manager.log_rate_limit_block(e.get_platform())
       raise e
