@@ -4,6 +4,7 @@ quick_settings:
       - "glassdoor"
       - "indeed"
       - "linkedin"
+    fallback_to_brief_on_load_issues: true
     # This determines whether we click the jobs and scrape the detailed info
     # If false, the following will be null: Description, Min YoE, Max YoE
     full_scrape: false
