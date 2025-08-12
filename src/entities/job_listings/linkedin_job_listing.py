@@ -177,11 +177,13 @@ class LinkedinJobListing(JobListing):
         if len(hourly_values) == 2:
           self.set_min_pay(hourly_values[0])
           self.set_max_pay(hourly_values[1])
+          return
       elif IS_ANNUAL:
         salary_values = [float(v.replace("$", "")) * K_TO_TRUE_SALARY_CONST for v in values if v.strip()]
         if len(salary_values) == 2:
           self.set_min_pay(salary_values[0])
           self.set_max_pay(salary_values[1])
+          return
     else:
       match = re.search(r"\$[0-9]+(?:\.[0-9]{1,2})?", raw_pay_string)
       if match:
@@ -195,3 +197,6 @@ class LinkedinJobListing(JobListing):
         else:
           self.set_min_pay(value)
         self.set_max_pay(value)
+        return
+    self.set_min_pay(None)
+    self.set_max_pay(None)
