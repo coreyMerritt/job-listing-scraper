@@ -75,6 +75,19 @@ class IndeedJobListing(JobListing):
         first_max_hourly_from_range_match = float(max_hourly_from_range_match.group(1)) * 2080
         self.set_max_pay(first_max_hourly_from_range_match)
         return
+      single_salary_regex = r"\$([0-9]+,[0-9]+)"
+      single_salary_match = re.match(single_salary_regex, raw_pay)
+      if single_salary_match:
+        first_single_salary_match = str(single_salary_match.group(1))
+        salary_match_as_float = float(first_single_salary_match.replace(",", ""))
+        self.set_max_pay(salary_match_as_float)
+        return
+      single_hourly_regex = r"\$([0-9]+)"
+      single_hourly_match = re.match(single_hourly_regex, raw_pay)
+      if single_hourly_match:
+        first_single_hourly_match = float(single_hourly_match.group(1)) * 2080
+        self.set_max_pay(first_single_hourly_match)
+        return
     except NoSuchElementException:
       pass
     self.set_max_pay(None)
