@@ -69,12 +69,13 @@ class JobListingsPage(ABC):
     while True:
       try:
         total_jobs_tried, job_listing_li_index = self._handle_incrementors(total_jobs_tried, job_listing_li_index)
-        if self._need_next_page(job_listing_li_index):
-          if self._is_next_page():
-            logging.info("Going to next page...")
-            self._go_to_next_page()
-          else:
-            raise NoMoreJobListingsException()
+        if not total_jobs_tried == 1:
+          if self._need_next_page(job_listing_li_index):
+            if self._is_next_page():
+              logging.info("Going to next page...")
+              self._go_to_next_page()
+            else:
+              raise NoMoreJobListingsException()
         logging.info("Attempting Job Listing: %s...", total_jobs_tried)
         logging.info("Trying to get Job Listing Li...")
         job_listing_li = self._get_job_listing_li(job_listing_li_index)

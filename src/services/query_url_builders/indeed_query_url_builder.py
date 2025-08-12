@@ -4,7 +4,6 @@ from models.configs.universal_config import UniversalConfig
 
 
 class IndeedQueryUrlBuilder:
-  __search_terms: List[str]
   __ignore_terms: List[str]
   __location: str | None
   __max_age_in_days: int
@@ -18,7 +17,6 @@ class IndeedQueryUrlBuilder:
   __url: str
 
   def __init__(self, universal_config: UniversalConfig):
-    self.__search_terms = universal_config.search.terms.match
     self.__ignore_terms = universal_config.search.terms.ignore
     self.__location = universal_config.search.location.city
     self.__max_age_in_days = universal_config.search.misc.max_age_in_days
@@ -34,9 +32,9 @@ class IndeedQueryUrlBuilder:
     self.__senior_level = universal_config.search.experience.senior
     self.__url = ""
 
-  def build(self) -> str:
+  def build(self, term: str) -> str:
     self.__add_base()
-    self.__add_search_terms()
+    self.__add_search_term(term)
     self.__add_ignore_terms()
     self.__add_always_params()
     self.__add_location()
@@ -53,14 +51,8 @@ class IndeedQueryUrlBuilder:
   def __add_base(self) -> None:
     self.__url = "https://www.indeed.com/jobs?"
 
-  def __add_search_terms(self) -> None:
-    self.__url += "q=%28"
-    first_term = self.__search_terms[0]
-    self.__url += first_term
-    for term in self.__search_terms:
-      if term != first_term:
-        self.__url += f"+or+{term}"
-    self.__url += "%29"
+  def __add_search_term(self, term: str) -> None:
+    self.__url += f"q=%28{term}%29"
 
   def __add_ignore_terms(self) -> None:
     for term in self.__ignore_terms:

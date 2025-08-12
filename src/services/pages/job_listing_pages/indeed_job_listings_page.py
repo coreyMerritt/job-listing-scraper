@@ -38,28 +38,27 @@ class IndeedJobListingsPage(JobListingsPage):
     return total_jobs_tried, job_listing_li_index
 
   def _get_job_listing_li(self, job_listing_li_index: int, timeout=10) -> WebElement:
-    time.sleep(0.1)
+    job_listings_ul = self.__get_job_listings_ul()
+    job_listing_li = job_listings_ul.find_element(By.XPATH, f"./li[{job_listing_li_index}]")
+    ADVERTISEMENT_MATCHES = [
+      "mosaic-afterFifthJobResult",
+      "mosaic-afterTenthJobResult",
+      "mosaicZone_afterFifteenthJobResult"
+      "jobsearch-SerpJobCard--sponsored",
+      "icl-JobResult-card--sponsored"
+    ]
+    job_listing_html = job_listing_li.get_attribute("innerHTML")
+    if job_listing_html:
+      for phrase in ADVERTISEMENT_MATCHES:
+        if phrase in job_listing_html:
+          raise JobListingIsAdvertisementException()
     try:
-      job_listings_ul = self.__get_job_listings_ul()
-      job_listing_li = job_listings_ul.find_element(By.XPATH, f"./li[{job_listing_li_index}]")
-      ADVERTISEMENT_MATCHES = [
-        "mosaic-afterFifthJobResult",
-        "mosaic-afterTenthJobResult",
-        "mosaicZone_afterFifteenthJobResult"
-        "jobsearch-SerpJobCard--sponsored",
-        "icl-JobResult-card--sponsored"
-      ]
-      job_listing_html = job_listing_li.get_attribute("innerHTML")
-      if job_listing_html:
-        for phrase in ADVERTISEMENT_MATCHES:
-          if phrase in job_listing_html:
-            raise JobListingIsAdvertisementException()
       card_outline = job_listing_li.find_element(By.CSS_SELECTOR, "div.cardOutline")
       if card_outline.get_attribute("aria-hidden") == "true":
         raise JobListingIsAdvertisementException()
-      return job_listing_li
-    except NoSuchElementException as e:
-      raise NoMoreJobListingsException() from e
+    except NoSuchElementException:
+      raise JobListingIsAdvertisementException()
+    return job_listing_li
 
   def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=30.0) -> IndeedJobListing | None:
     try:
@@ -118,11 +117,7 @@ class IndeedJobListingsPage(JobListingsPage):
     raise TimeoutException("Timed out trying to build job listing.")
 
   def _need_next_page(self, job_listing_li_index: int) -> bool:
-    try:
-      self._get_job_listing_li(job_listing_li_index, 1)
-      return False
-    except NoMoreJobListingsException:
-      return True
+    return job_listing_li_index == 2
 
   def _is_next_page(self) -> bool:
     visible_page_numbers = self.__get_visible_page_numbers()

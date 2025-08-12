@@ -9,7 +9,7 @@ class IndeedJobListing(JobListing):
   def _init_min_pay(self) -> None:
     pay_h2_selector = ".mosaic-provider-jobcards-4n9q2y.e1tiznh50"
     try:
-      pay_h2 = self.__job_listing_li.find_element(By.CSS_SELECTOR, pay_h2_selector)
+      pay_h2 = self._get_job_listing_li().find_element(By.CSS_SELECTOR, pay_h2_selector)
       raw_pay = pay_h2.text
       min_salary_from_range_regex = r"\$([0-9]+,?[0-9]+) - \$[0-9]+,?[0-9]+"
       min_salary_from_range_match = re.match(min_salary_from_range_regex, raw_pay)
@@ -44,7 +44,7 @@ class IndeedJobListing(JobListing):
   def _init_max_pay(self) -> None:
     pay_h2_selector = ".mosaic-provider-jobcards-4n9q2y.e1tiznh50"
     try:
-      pay_h2 = self.__job_listing_li.find_element(By.CSS_SELECTOR, pay_h2_selector)
+      pay_h2 = self._get_job_listing_li().find_element(By.CSS_SELECTOR, pay_h2_selector)
       raw_pay = pay_h2.text
       max_salary_from_range_regex = r"\$[0-9]+,?[0-9]+ - \$([0-9]+,?[0-9]+)"
       max_salary_from_range_match = re.match(max_salary_from_range_regex, raw_pay)
@@ -77,14 +77,14 @@ class IndeedJobListing(JobListing):
     self.set_max_pay(None)
 
   def _init_title(self) -> None:
-    job_listing_h2 = self.__job_listing_li.find_element(
+    job_listing_h2 = self._get_job_listing_li().find_element(
       By.CSS_SELECTOR,
       "h2.jobTitle"
     )
     self.set_title(job_listing_h2.text.strip())
 
   def _init_company(self) -> None:
-    job_listing_li_spans = self.__job_listing_li.find_elements(By.TAG_NAME, "span")
+    job_listing_li_spans = self._get_job_listing_li().find_elements(By.TAG_NAME, "span")
     for span in job_listing_li_spans:
       data_test_id = span.get_attribute("data-testid")
       if data_test_id:
@@ -94,7 +94,7 @@ class IndeedJobListing(JobListing):
     raise NoSuchElementException("Failed to find a suitable company element.")
 
   def _init_location(self) -> None:
-    job_listing_li_divs = self.__job_listing_li.find_elements(By.TAG_NAME, "div")
+    job_listing_li_divs = self._get_job_listing_li().find_elements(By.TAG_NAME, "div")
     for div in job_listing_li_divs:
       data_test_id = div.get_attribute("data-testid")
       if data_test_id:
@@ -105,7 +105,7 @@ class IndeedJobListing(JobListing):
 
   def _init_url(self) -> None:
     title_anchor_selector = ".jcs-JobTitle.css-1baag51.eu4oa1w0"
-    title_anchor = self.__job_listing_li.find_element(By.CSS_SELECTOR, title_anchor_selector)
+    title_anchor = self._get_job_listing_li().find_element(By.CSS_SELECTOR, title_anchor_selector)
     url = title_anchor.get_attribute("href")
     assert url
     self.set_url(url)
@@ -118,8 +118,9 @@ class IndeedJobListing(JobListing):
     pass
 
   def _init_description(self) -> None:
-    if self.__job_details_div:
-      job_details_html = self.__job_details_div.get_attribute("innerHTML")
+    job_details_div = self._get_job_details_div()
+    if job_details_div:
+      job_details_html = job_details_div.get_attribute("innerHTML")
       if job_details_html:
         soup = BeautifulSoup(job_details_html, "html.parser")
         description = soup.get_text(separator="\n", strip=True)

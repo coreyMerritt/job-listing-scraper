@@ -1,8 +1,8 @@
 import logging
 import time
 import undetected_chromedriver as uc
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import JavascriptException, TimeoutException
+from exceptions.service_is_down_exception import ServiceIsDownException
 from models.configs.indeed_config import IndeedConfig
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
@@ -60,23 +60,47 @@ class IndeedOrchestrationEngine:
       self.__indeed_one_time_code_page.resolve_with_mail_dot_com()
     self.__indeed_one_time_code_page.wait_for_captcha_resolution()
 
-  def scrape(self) -> None:
-    self.__go_to_query()
-    while not self.__indeed_job_listings_page.is_present():
-      logging.debug("Waiting for Job Listings page to appear...")
-      time.sleep(0.5)
-    self.__indeed_job_listings_page.scrape_current_query()
+  # def scrape(self) -> None:
+  #   self.__go_to_query()
+  #   while not self.__indeed_job_listings_page.is_present():
+  #     logging.debug("Waiting for Job Listings page to appear...")
+  #     time.sleep(0.5)
+  #   self.__indeed_job_listings_page.scrape_current_query()
 
-  def __go_to_query(self) -> None:
-    query_url_builder = IndeedQueryUrlBuilder(self.__universal_config)
-    query_url = query_url_builder.build()
-    logging.debug("Going to %s...",  query_url)
-    self.__driver.get(query_url)
-    verification_element_name = "q"
-    while True:
-      try:
-        self.__driver.find_element(By.NAME, verification_element_name)
-        break
-      except NoSuchElementException:
-        logging.debug("Waiting for page verification element to appear...")
-        time.sleep(0.5)
+  def scrape(self) -> None:
+    search_terms = self.__universal_config.search.terms.match
+    for search_term in search_terms:
+      timeout = 60.0
+      start_time = time.time()
+      while time.time() - start_time < timeout:
+        try:
+          query_builder = IndeedQueryUrlBuilder(self.__universal_config)
+          query_url = query_builder.build(search_term)
+          self.__go_to_query_url(query_url)
+          self.__indeed_job_listings_page.scrape_current_query()
+          break
+        except TimeoutError:
+          logging.warning("Timed out waiting for query url. Trying again...")
+          time.sleep(0.1)
+      break
+
+  def __go_to_query_url(self, url: str) -> None:
+    logging.info("Going to query url: %s...", url)
+    try:
+      self.__driver.get(url)
+    except TimeoutException:
+      pass
+
+  # def __go_to_query(self) -> None:
+  #   query_url_builder = IndeedQueryUrlBuilder(self.__universal_config)
+  #   query_url = query_url_builder.build()
+  #   logging.debug("Going to %s...",  query_url)
+  #   self.__driver.get(query_url)
+  #   verification_element_name = "q"
+  #   while True:
+  #     try:
+  #       self.__driver.find_element(By.NAME, verification_element_name)
+  #       break
+  #     except NoSuchElementException:
+  #       logging.debug("Waiting for page verification element to appear...")
+  #       time.sleep(0.5)
