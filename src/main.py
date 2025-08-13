@@ -78,7 +78,8 @@ def start() -> None:
 def parse_args(config: FullConfig) -> None:
   parser = argparse.ArgumentParser()
   subparsers = parser.add_subparsers(dest="command")
-  subparsers.required = True
+  subparsers.required = False
+  parser.set_defaults(func=lambda args: None)
   glassdoor_parser = subparsers.add_parser("glassdoor")
   glassdoor_parser.set_defaults(func=partial(glassdoor, config))
   indeed_parser = subparsers.add_parser("indeed")
