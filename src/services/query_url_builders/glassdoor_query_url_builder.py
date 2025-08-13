@@ -62,7 +62,7 @@ class GlassdoorQueryUrlBuilder:
     location_start = 0
     location_end = len(encoded_location)
     term_start = location_end + 1
-    term_end = term_start + len(encoded_term)
+    term_end = term_start + len(encoded_term) - 1
     self.__url += (
       f"-{encoded_term}-jobs-SRCH_IL.{location_start},{location_end}"
       f"_IN1_KO{term_start},{term_end}.htm?"
