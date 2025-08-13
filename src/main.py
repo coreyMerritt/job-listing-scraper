@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from functools import partial
 import logging
 import time
 import traceback
@@ -20,179 +21,137 @@ from services.orchestration.linkedin_orchestration_engine import LinkedinOrchest
 from services.misc.language_parser import LanguageParser
 
 
-class Start:
-  __config: FullConfig
-  __driver: uc.Chrome
-  __proxy_manager: ProxyManager
-  __selenium_helper: SeleniumHelper
-  __database_manager: DatabaseManager
-  __indeed_orchestration_engine: IndeedOrchestrationEngine
-  __glassdoor_orchestration_engine: GlassdoorOrchestrationEngine
-  __linkedin_orchestration_engine: LinkedinOrchestrationEngine
-  __language_parser: LanguageParser
+def start() -> None:
+  configure_logger()
+  with open("config.yml", "r", encoding='utf-8') as config_file:
+    raw_config = yaml.safe_load(config_file)
+  config = from_dict(data_class=FullConfig, data=raw_config)
+  parse_args(config)
+  database_manager = DatabaseManager(config.system.database)
+  proxy_manager = ProxyManager(config.system.proxies, database_manager)
+  selenium_helper = SeleniumHelper(
+    config.system,
+    config.quick_settings.bot_behavior.default_page_load_timeout,
+    proxy_manager
+  )
+  driver = selenium_helper.get_driver()
+  language_parser = LanguageParser()
+  indeed_orchestration_engine = IndeedOrchestrationEngine(
+    driver,
+    selenium_helper,
+    database_manager,
+    language_parser,
+    proxy_manager,
+    config.universal,
+    config.quick_settings,
+    config.indeed
+  )
+  glassdoor_orchestration_engine = GlassdoorOrchestrationEngine(
+    driver,
+    selenium_helper,
+    database_manager,
+    language_parser,
+    proxy_manager,
+    config.universal,
+    config.quick_settings,
+    config.glassdoor
+  )
+  linkedin_orchestration_engine = LinkedinOrchestrationEngine(
+    driver,
+    selenium_helper,
+    database_manager,
+    language_parser,
+    config.universal,
+    config.quick_settings,
+    config.linkedin,
+    proxy_manager
+  )
+  scrape(
+    config,
+    glassdoor_orchestration_engine,
+    indeed_orchestration_engine,
+    linkedin_orchestration_engine,
+    proxy_manager,
+    driver
+  )
 
-  def __init__(self):
-    self.__configure_logger()
-    with open("config.yml", "r", encoding='utf-8') as config_file:
-      raw_config = yaml.safe_load(config_file)
-    self.__config = from_dict(data_class=FullConfig, data=raw_config)
-    self.__database_manager = DatabaseManager(self.__config.system.database)
-    self.__proxy_manager = ProxyManager(self.__config.system.proxies, self.__database_manager)
-    self.__selenium_helper = SeleniumHelper(
-      self.__config.system,
-      self.__config.quick_settings.bot_behavior.default_page_load_timeout,
-      self.__proxy_manager
-    )
-    self.__driver = self.__selenium_helper.get_driver()
-    self.__language_parser = LanguageParser()
-    self.__indeed_orchestration_engine = IndeedOrchestrationEngine(
-      self.__driver,
-      self.__selenium_helper,
-      self.__database_manager,
-      self.__language_parser,
-      self.__proxy_manager,
-      self.__config.universal,
-      self.__config.quick_settings,
-      self.__config.indeed
-    )
-    self.__glassdoor_orchestration_engine = GlassdoorOrchestrationEngine(
-      self.__driver,
-      self.__selenium_helper,
-      self.__database_manager,
-      self.__language_parser,
-      self.__proxy_manager,
-      self.__config.universal,
-      self.__config.quick_settings,
-      self.__config.glassdoor
-    )
-    self.__linkedin_orchestration_engine = LinkedinOrchestrationEngine(
-      self.__driver,
-      self.__selenium_helper,
-      self.__database_manager,
-      self.__language_parser,
-      self.__config.universal,
-      self.__config.quick_settings,
-      self.__config.linkedin,
-      self.__proxy_manager
-    )
+def parse_args(config: FullConfig) -> None:
+  parser = argparse.ArgumentParser()
+  subparsers = parser.add_subparsers(dest="command")
+  subparsers.required = True
+  glassdoor_parser = subparsers.add_parser("glassdoor")
+  glassdoor_parser.set_defaults(func=partial(glassdoor, config))
+  indeed_parser = subparsers.add_parser("indeed")
+  indeed_parser.set_defaults(func=partial(indeed, config))
+  linkedin_parser = subparsers.add_parser("linkedin")
+  linkedin_parser.set_defaults(func=partial(linkedin, config))
+  args = parser.parse_args()
+  args.func(args)
 
-  def execute(self):
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="command")
-    subparsers.required = True
-    scrape_parser = subparsers.add_parser("scrape")
-    scrape_parser.set_defaults(func=self.scrape)
-    glassdoor_parser = subparsers.add_parser("glassdoor")
-    glassdoor_parser.set_defaults(func=self.glassdoor)
-    indeed_parser = subparsers.add_parser("indeed")
-    indeed_parser.set_defaults(func=self.indeed)
-    linkedin_parser = subparsers.add_parser("linkedin")
-    linkedin_parser.set_defaults(func=self.linkedin)
-    args = parser.parse_args()
-    args.func(args)
-
-  def scrape(self, args: argparse.Namespace):    # pylint: disable=unused-argument
-    try:
-      for some_platform in self.__config.quick_settings.bot_behavior.platform_order:
+def scrape(
+  config: FullConfig,
+  glassdoor_orchestration_engine: GlassdoorOrchestrationEngine,
+  indeed_orchestration_engine: IndeedOrchestrationEngine,
+  linkedin_orchestration_engine: LinkedinOrchestrationEngine,
+  proxy_manager: ProxyManager,
+  driver: uc.Chrome
+) -> None:
+  try:
+    while True:
+      for some_platform in config.quick_settings.bot_behavior.platform_order:
         platform = str(some_platform).lower()
-        if platform == Platform.LINKEDIN.value.lower():
-          self.__linkedin_orchestration_engine.login()
-          self.__linkedin_orchestration_engine.scrape()
-        elif platform == Platform.GLASSDOOR.value.lower():
-          self.__glassdoor_orchestration_engine.login()
-          self.__glassdoor_orchestration_engine.scrape()
+        if platform == Platform.GLASSDOOR.value.lower():
+          glassdoor_orchestration_engine.login()
+          glassdoor_orchestration_engine.scrape()
         elif platform == Platform.INDEED.value.lower():
-          self.__indeed_orchestration_engine.login()
-          self.__indeed_orchestration_engine.scrape()
-      self.__remove_all_tabs_except_first()
-    except MemoryOverloadException as e:
-      raise e
-    except RateLimitedException as e:
-      self.__proxy_manager.log_rate_limit_block(e.get_platform())
-      raise e
-    except Exception:
-      traceback.print_exc()
-      input("\tPress enter to exit...")
-    finally:
-      self.__driver.quit()
+          indeed_orchestration_engine.login()
+          indeed_orchestration_engine.scrape()
+        elif platform == Platform.LINKEDIN.value.lower():
+          linkedin_orchestration_engine.login()
+          linkedin_orchestration_engine.scrape()
+  except MemoryOverloadException as e:
+    raise e
+  except RateLimitedException as e:
+    proxy_manager.log_rate_limit_block(e.get_platform())
+    raise e
+  except Exception:
+    traceback.print_exc()
+    input("\tPress enter to exit...")
+  finally:
+    driver.quit()
 
-  def glassdoor(self, args: argparse.Namespace):    # pylint: disable=unused-argument
-    try:
-      self.__glassdoor_orchestration_engine.login()
-      while True:
-        self.__glassdoor_orchestration_engine.scrape()
-    except MemoryOverloadException as e:
-      raise e
-    except RateLimitedException as e:
-      self.__proxy_manager.log_rate_limit_block(e.get_platform())
-      raise e
-    except Exception:
-      traceback.print_exc()
-      input("\tPress enter to exit...")
-    finally:
-      self.__driver.quit()
+def glassdoor(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: disable=unused-argument
+  config.quick_settings.bot_behavior.platform_order = [Platform.GLASSDOOR.value]
 
-  def indeed(self, args: argparse.Namespace):    # pylint: disable=unused-argument
-    try:
-      self.__indeed_orchestration_engine.login()
-      while True:
-        self.__indeed_orchestration_engine.scrape()
-    except MemoryOverloadException as e:
-      raise e
-    except RateLimitedException as e:
-      self.__proxy_manager.log_rate_limit_block(e.get_platform())
-      raise e
-    except Exception:
-      traceback.print_exc()
-      input("\tPress enter to exit...")
-    finally:
-      self.__driver.quit()
+def indeed(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: disable=unused-argument
+  config.quick_settings.bot_behavior.platform_order = [Platform.INDEED.value]
 
-  def linkedin(self, args: argparse.Namespace):    # pylint: disable=unused-argument
-    try:
-      self.__linkedin_orchestration_engine.login()
-      while True:
-        self.__linkedin_orchestration_engine.scrape()
-    except MemoryOverloadException as e:
-      raise e
-    except RateLimitedException as e:
-      self.__proxy_manager.log_rate_limit_block(e.get_platform())
-      raise e
-    except Exception:
-      traceback.print_exc()
-      input("\tPress enter to exit...")
-    finally:
-      self.__driver.quit()
+def linkedin(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: disable=unused-argument
+  config.quick_settings.bot_behavior.platform_order = [Platform.LINKEDIN.value]
 
-  def __configure_logger(self):
-    def custom_time(record):
-      t = time.localtime(record.created)
-      return time.strftime("%Y-%m-%d %H:%M:%S", t) + f".{int(record.msecs):03d}"
-    logging.basicConfig(
-      format='[%(asctime)s] [%(levelname)s] %(message)s',
-      datefmt='',
-      level=logging.DEBUG
-    )
-    logging.Formatter.converter = time.localtime
-    logging.Formatter.formatTime = lambda self, record, datefmt=None: custom_time(record)
-    noisy_loggers = [
-      "selenium", "urllib3", "httpx", "asyncio", "trio", "PIL.Image", 
-      "undetected_chromedriver", "werkzeug", "hpack", "chardet.charsetprober", 
-      "websockets", "chromedriver_autoinstaller"
-    ]
-    for name in noisy_loggers:
-      logging.getLogger(name).setLevel(logging.WARNING)
+def configure_logger():
+  def custom_time(record):
+    t = time.localtime(record.created)
+    return time.strftime("%Y-%m-%d %H:%M:%S", t) + f".{int(record.msecs):03d}"
+  logging.basicConfig(
+    format='[%(asctime)s] [%(levelname)s] %(message)s',
+    datefmt='',
+    level=logging.DEBUG
+  )
+  logging.Formatter.converter = time.localtime
+  logging.Formatter.formatTime = lambda self, record, datefmt=None: custom_time(record)
+  noisy_loggers = [
+    "selenium", "urllib3", "httpx", "asyncio", "trio", "PIL.Image", 
+    "undetected_chromedriver", "werkzeug", "hpack", "chardet.charsetprober", 
+    "websockets", "chromedriver_autoinstaller"
+  ]
+  for name in noisy_loggers:
+    logging.getLogger(name).setLevel(logging.WARNING)
 
-  def __remove_all_tabs_except_first(self) -> None:
-    while len(self.__driver.window_handles) > 1:
-      self.__driver.switch_to.window(self.__driver.window_handles[-1])
-      self.__driver.close()
-    self.__driver.switch_to.window(self.__driver.window_handles[0])
 
 while True:
   try:
-    job_listing_scraper = Start()
-    job_listing_scraper.execute()
+    start()
   except MemoryOverloadException:
     print("\nCurrent memory usage is too high. Please clean up existing tabs to continue safely.")
     input("\tPress enter to proceed...")
