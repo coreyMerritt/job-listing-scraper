@@ -101,11 +101,16 @@ class IndeedJobListingsPage(JobListingsPage):
       except NoSuchElementException as e:
         if "indeed.com/viewjob" in self._driver.current_url:
           raise JobListingOpensInWindowException() from e
-        while self.__is_additional_verification_required_page():
-          logging.debug("Waiting for user to handle security checkpoint...")
         logging.debug("Failed to get job description div. Trying again...")
         time.sleep(0.5)
-    raise AttributeError("Job description div has no innerHTML attribute.")
+    if not self.__is_additional_verification_required_page():
+      raise AttributeError("Job description div has no innerHTML attribute.")
+    while self.__is_additional_verification_required_page():
+      logging.debug("Waiting for user to handle security checkpoint...")
+      time.sleep(1)
+    if "indeed.com/viewjob" in self._driver.current_url:
+      raise JobListingOpensInWindowException()
+    return self._get_job_details_div()
 
   def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10) -> JobListing:
     start_time = time.time()
