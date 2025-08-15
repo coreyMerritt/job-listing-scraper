@@ -160,7 +160,14 @@ class IndeedJobListingsPage(JobListingsPage):
         return job_listings_ul
       except NoSuchElementException:
         pass
-    raise NoSuchElementException("Failed to find Job Listings ul.")
+    if not self.__is_additional_verification_required_page():
+      raise NoSuchElementException("Failed to find Job Listings ul.")
+    while self.__is_additional_verification_required_page():
+      logging.debug("Waiting for user to handle security checkpoint...")
+      time.sleep(1)
+    if "indeed.com/viewjob" in self._driver.current_url:
+      raise JobListingOpensInWindowException()
+    return self.__get_job_listings_ul()
 
   def __get_current_page_number(self) -> int:
     page_buttons_ul = self.__get_page_buttons_ul()
