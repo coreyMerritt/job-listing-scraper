@@ -31,15 +31,18 @@ class IndeedJobListingsPage(JobListingsPage):
 
   def _handle_incrementors(self, total_jobs_tried: int, job_listing_li_index: int) -> Tuple[int, int]:
     total_jobs_tried += 1
-    job_listing_li_index = (total_jobs_tried % 19) + 1
+    job_listing_li_index = (total_jobs_tried % 20) + 1
     if job_listing_li_index == 1:
       total_jobs_tried += 1
-      job_listing_li_index = (total_jobs_tried % 19) + 1
+      job_listing_li_index = (total_jobs_tried % 20) + 1
     return total_jobs_tried, job_listing_li_index
 
   def _get_job_listing_li(self, job_listing_li_index: int, timeout=10) -> WebElement:
     job_listings_ul = self.__get_job_listings_ul()
-    job_listing_li = job_listings_ul.find_element(By.XPATH, f"./li[{job_listing_li_index}]")
+    try:
+      job_listing_li = job_listings_ul.find_element(By.XPATH, f"./li[{job_listing_li_index}]")
+    except NoSuchElementException as e:
+      raise NoMoreJobListingsException() from e
     ADVERTISEMENT_MATCHES = [
       "mosaic-afterFifthJobResult",
       "mosaic-afterTenthJobResult",
@@ -56,8 +59,8 @@ class IndeedJobListingsPage(JobListingsPage):
       card_outline = job_listing_li.find_element(By.CSS_SELECTOR, "div.cardOutline")
       if card_outline.get_attribute("aria-hidden") == "true":
         raise JobListingIsAdvertisementException()
-    except NoSuchElementException:
-      raise JobListingIsAdvertisementException()
+    except NoSuchElementException as e:
+      raise JobListingIsAdvertisementException() from e
     return job_listing_li
 
   def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=30.0) -> IndeedJobListing | None:

@@ -39,12 +39,12 @@ def start() -> None:
   indeed_orchestration_engine = IndeedOrchestrationEngine(
     driver,
     selenium_helper,
-    database_manager,
-    language_parser,
-    proxy_manager,
     config.universal,
     config.quick_settings,
-    config.indeed
+    config.indeed,
+    database_manager,
+    language_parser,
+    proxy_manager
   )
   glassdoor_orchestration_engine = GlassdoorOrchestrationEngine(
     driver,
@@ -99,29 +99,32 @@ def scrape(
   proxy_manager: ProxyManager,
   driver: uc.Chrome
 ) -> None:
-  try:
+  for some_platform in config.quick_settings.bot_behavior.platform_order:
+    platform = str(some_platform).lower()
+    if platform == Platform.GLASSDOOR.value.lower():
+      glassdoor_orchestration_engine.login()
+    elif platform == Platform.INDEED.value.lower():
+      indeed_orchestration_engine.login()
+    elif platform == Platform.LINKEDIN.value.lower():
+      linkedin_orchestration_engine.login()
     while True:
-      for some_platform in config.quick_settings.bot_behavior.platform_order:
-        platform = str(some_platform).lower()
+      try:
         if platform == Platform.GLASSDOOR.value.lower():
-          glassdoor_orchestration_engine.login()
           glassdoor_orchestration_engine.scrape()
         elif platform == Platform.INDEED.value.lower():
-          indeed_orchestration_engine.login()
           indeed_orchestration_engine.scrape()
         elif platform == Platform.LINKEDIN.value.lower():
-          linkedin_orchestration_engine.login()
           linkedin_orchestration_engine.scrape()
-  except MemoryOverloadException as e:
-    raise e
-  except RateLimitedException as e:
-    proxy_manager.log_rate_limit_block(e.get_platform())
-    raise e
-  except Exception:
-    traceback.print_exc()
-    input("\tPress enter to exit...")
-  finally:
-    driver.quit()
+      except MemoryOverloadException as e:
+        raise e
+      except RateLimitedException as e:
+        proxy_manager.log_rate_limit_block(e.get_platform())
+        raise e
+      except Exception:
+        traceback.print_exc()
+        input("\tPress enter to exit...")
+      finally:
+        driver.quit()
 
 def glassdoor(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: disable=unused-argument
   config.quick_settings.bot_behavior.platform_order = [Platform.GLASSDOOR.value]
