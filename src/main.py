@@ -86,6 +86,8 @@ def parse_args(config: FullConfig) -> None:
   indeed_parser.set_defaults(func=partial(indeed, config))
   linkedin_parser = subparsers.add_parser("linkedin")
   linkedin_parser.set_defaults(func=partial(linkedin, config))
+  all_parser = subparsers.add_parser("all")
+  all_parser.set_defaults(func=partial(all_platforms, config))
   args = parser.parse_args()
   args.func(args)
 
@@ -129,6 +131,13 @@ def indeed(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: d
 
 def linkedin(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: disable=unused-argument
   config.quick_settings.bot_behavior.platform_order = [Platform.LINKEDIN.value]
+
+def all_platforms(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: disable=unused-argument
+  config.quick_settings.bot_behavior.platform_order = [
+    Platform.GLASSDOOR.value,
+    Platform.INDEED.value,
+    Platform.LINKEDIN.value
+  ]
 
 def configure_logger():
   def custom_time(record):
