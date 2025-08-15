@@ -79,7 +79,6 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
         except TimeoutError:
           logging.warning("Timed out waiting for query url. Trying again...")
           time.sleep(0.1)
-      break
 
   def __go_to_query_url(self, url: str) -> None:
     logging.info("Going to query url: %s...", url)
