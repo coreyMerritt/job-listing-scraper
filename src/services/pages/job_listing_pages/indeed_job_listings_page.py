@@ -13,7 +13,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from entities.job_listings.abc_job_listing import JobListing
 from entities.job_listings.indeed_job_listing import IndeedJobListing
 from exceptions.job_listing_is_advertisement_exception import JobListingIsAdvertisementException
+from exceptions.job_listing_opens_in_window_exception import JobListingOpensInWindowException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
+from models.enums.element_type import ElementType
 from models.enums.platform import Platform
 from services.pages.job_listing_pages.abc_job_listings_page import JobListingsPage
 
@@ -96,7 +98,11 @@ class IndeedJobListingsPage(JobListingsPage):
       try:
         job_description_div = self._driver.find_element(By.ID, job_details_div_id)
         return job_description_div
-      except NoSuchElementException:
+      except NoSuchElementException as e:
+        if "indeed.com/viewjob" in self._driver.current_url:
+          raise JobListingOpensInWindowException() from e
+        while self.__is_additional_verification_required_page():
+          logging.debug("Waiting for user to handle security checkpoint...")
         logging.debug("Failed to get job description div. Trying again...")
         time.sleep(0.5)
     raise AttributeError("Job description div has no innerHTML attribute.")
@@ -111,7 +117,9 @@ class IndeedJobListingsPage(JobListingsPage):
           job_details_div
         )
         return job_listing
-      except StaleElementReferenceException:
+      except StaleElementReferenceException as e:
+        if "indeed.com/viewjob" in self._driver.current_url:
+          raise JobListingOpensInWindowException() from e
         logging.warning("StaleElementReferenceException while trying to build job listing. Trying again...")
         time.sleep(0.1)
       except NoSuchElementException:
@@ -206,3 +214,9 @@ class IndeedJobListingsPage(JobListingsPage):
           logging.debug("Failed to find page buttons ul. Trying again...")
           time.sleep(0.1)
     raise NoSuchElementException("Failed to find page buttons ul.")
+
+  def __is_additional_verification_required_page(self) -> bool:
+    return self._selenium_helper.exact_text_is_present(
+      "Additional Verification Required",
+      ElementType.H1
+    )
