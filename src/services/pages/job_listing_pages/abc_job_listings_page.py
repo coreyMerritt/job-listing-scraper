@@ -4,7 +4,7 @@ import logging
 import psutil
 import undetected_chromedriver as uc
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from entities.job_listings.abc_job_listing import JobListing
 from exceptions.glassdoor_zero_jobs_bug_exception import GlassdoorZeroJobsBugException
 from exceptions.job_details_didnt_load_exception import JobDetailsDidntLoadException
@@ -131,7 +131,12 @@ class JobListingsPage(ABC):
         self._handle_potential_overload()
       except GlassdoorZeroJobsBugException:
         logging.info("Show more jobs button spawned zero jobs. Refreshing and trying again...")
-        self._driver.refresh()
+        while True:
+          try:
+            self._driver.refresh()
+            break
+          except TimeoutException:
+            pass
         self.scrape_current_query()
         return
       except LinkedinSomethingWentWrongException:
