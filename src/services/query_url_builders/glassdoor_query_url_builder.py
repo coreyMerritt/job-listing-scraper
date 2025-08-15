@@ -57,16 +57,17 @@ class GlassdoorQueryUrlBuilder:
     self.__url += self.__location
 
   def __add_search_term(self, term: str) -> None:
-    encoded_location = self.__location
-    encoded_term = quote(term)
+    raw_location = self.__location or ""
+    raw_term = (term or "").strip()
+    encoded_term = quote(raw_term)
     location_start = 0
-    location_end = len(encoded_location)
+    location_end = location_start + len(raw_location)
     term_start = location_end + 1
-    term_end = term_start + len(encoded_term) - 1
+    term_end = term_start + len(raw_term)
     self.__url += (
       f"-{encoded_term}-jobs-SRCH_IL.{location_start},{location_end}"
       f"_IN1_KO{term_start},{term_end}.htm?"
-    )
+    ) 
 
   def __add_remote(self) -> None:
     if self.__remote:
