@@ -1,6 +1,6 @@
+from abc import abstractmethod
 import logging
 import random
-import re
 import time
 from typing import Tuple
 from selenium.webdriver.common.by import By
@@ -8,14 +8,10 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import (
   ElementClickInterceptedException,
   NoSuchElementException,
-  StaleElementReferenceException,
   TimeoutException
 )
 from entities.job_listings.abc_job_listing import JobListing
-from entities.job_listings.linkedin_job_listing import LinkedinJobListing
-from exceptions.linkedin_something_went_wrong_div_exception import LinkedinSomethingWentWrongException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
-from exceptions.no_results_data_exception import NoResultsDataException
 from exceptions.rate_limited_exception import RateLimitedException
 from exceptions.something_went_wrong_page_exception import SomethingWentWrongPageException
 from exceptions.zero_search_results_exception import ZeroSearchResultsException
@@ -25,45 +21,46 @@ from services.pages.job_listing_pages.abc_job_listings_page import JobListingsPa
 
 
 class LinkedinJobListingsPage(JobListingsPage):
+  @abstractmethod
+  def is_present(self) -> bool:
+    pass
+
+  @abstractmethod
+  def _is_zero_results(self, timeout=10) -> bool:
+    pass
+
+  @abstractmethod
+  def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=4.0) -> JobListing:
+    pass
+
+  @abstractmethod
+  def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10) -> JobListing:
+    pass
+
+  @abstractmethod
+  def _get_job_listings_ul(self, timeout=5) -> WebElement:
+    pass
+
+  @abstractmethod
+  def _job_listing_li_is_active(self, job_listing_li: WebElement) -> bool:
+    pass
+
   def _handle_incrementors(self, total_jobs_tried: int, job_listing_li_index: int) -> Tuple[int, int]:
     total_jobs_tried += 1
     if total_jobs_tried >= 4:
-      self._selenium_helper.scroll_down(self.__get_job_listings_ul())
+      self._selenium_helper.scroll_down(self._get_job_listings_ul())
     job_listing_li_index = total_jobs_tried % 26
     if job_listing_li_index == 0:
       total_jobs_tried += 1
       job_listing_li_index = 1
     return (total_jobs_tried, job_listing_li_index)
 
-  def _is_zero_results(self, timeout=10) -> bool:
-    results_div_selector = ".t-black--light.pv4.text-body-small.mr2"
-    results_regex = r"([0-9]+)\ result"
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-      try:
-        results_div = self._driver.find_element(By.CSS_SELECTOR, results_div_selector)
-        results_text = results_div.text
-        if results_text:
-          match = re.match(results_regex, results_text)
-          if match:
-            group = match.group(1)
-            results = int(group)
-            if results == 0:
-              return True
-            return False
-      except NoSuchElementException as e:
-        if self.__is_rate_limited_page():
-          raise RateLimitedException(Platform.LINKEDIN) from e
-        logging.debug("Failed to find results div. Trying again...")
-        time.sleep(0.1)
-    raise NoResultsDataException("Failed to find results div.")
-
   def _get_job_listing_li(self, job_listing_li_index: int, timeout=10) -> WebElement:
     relative_job_listing_li_xpath = f"./li[{job_listing_li_index}]"
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:
-        job_listings_ul = self.__get_job_listings_ul()
+        job_listings_ul = self._get_job_listings_ul()
         job_listing_li = job_listings_ul.find_element(By.XPATH, relative_job_listing_li_xpath)
         return job_listing_li
       except NoSuchElementException:
@@ -73,32 +70,14 @@ class LinkedinJobListingsPage(JobListingsPage):
         raise SomethingWentWrongPageException() from e
     raise NoMoreJobListingsException()
 
-  def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=4.0) -> LinkedinJobListing:
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-      try:
-        self._selenium_helper.scroll_into_view(job_listing_li)
-        job_listing = LinkedinJobListing(
-          self._language_parser,
-          job_listing_li
-        )
-        return job_listing
-      except StaleElementReferenceException:
-        logging.warning("StaleElementReferenceException while trying to build brief job listing. Trying again...")
-        time.sleep(0.1)
-      except NoSuchElementException:
-        logging.warning("NoSuchElementException while trying to build brief job listing. Trying again...")
-        time.sleep(0.1)
-    raise NoSuchElementException("Failed to find full job details div.")
-
-  def _add_job_listing_to_db(self, job_listing: LinkedinJobListing) -> None:
+  def _add_job_listing_to_db(self, job_listing: JobListing) -> None:
     self._database_manager.create_new_job_listing(
       job_listing,
       Platform.LINKEDIN
     )
 
   def _anti_rate_limit_wait(self) -> None:
-    random_time = (random.random() * 9) % 3
+    random_time = random.random() * 5
     time.sleep(random_time)
 
   def _click_job(self, job_listing_li: WebElement, timeout=10) -> None:
@@ -106,7 +85,7 @@ class LinkedinJobListingsPage(JobListingsPage):
     self.__click_job_listing_li(job_listing_li)
     start_time = time.time()
     while time.time() - start_time < timeout:
-      if self.__job_listing_li_is_active(job_listing_li):
+      if self._job_listing_li_is_active(job_listing_li):
         return
       logging.debug("Waiting for Job Listing li to be active to confirm Job Listing click...")
       time.sleep(0.1)
@@ -123,29 +102,6 @@ class LinkedinJobListingsPage(JobListingsPage):
         logging.info("Waiting for job description content div...")
         time.sleep(0.1)
     raise TimeoutException("Timed out waiting for job description content div.")
-
-  def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10) -> JobListing:
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-      try:
-        self._selenium_helper.scroll_into_view(job_listing_li)
-        job_header_div = self.__get_job_header_div()
-        job_listing = LinkedinJobListing(
-          self._language_parser,
-          job_listing_li,
-          job_details_div,
-          job_header_div
-        )
-        return job_listing
-      except StaleElementReferenceException:
-        logging.warning("StaleElementReferenceException while trying to build job listing. Trying again...")
-        time.sleep(0.1)
-      except NoSuchElementException:
-        logging.warning("NoSuchElementException while trying to build job listing. Trying again...")
-        time.sleep(0.1)
-    if self.__is_something_went_wrong_div():
-      raise LinkedinSomethingWentWrongException()
-    raise NoSuchElementException("Failed to find full job details div.")
 
   def _need_next_page(self, job_listing_li_index: int) -> bool:
     return job_listing_li_index == 1
@@ -165,15 +121,6 @@ class LinkedinJobListingsPage(JobListingsPage):
     )
     next_page_span.click()
 
-  def __job_listing_li_is_active(self, job_listing_li: WebElement) -> bool:
-    active_class = "job-card-job-posting-card-wrapper--active"
-    try:
-      self._selenium_helper.scroll_into_view(job_listing_li)
-      job_listing_li.find_element(By.CLASS_NAME, active_class)
-      return True
-    except NoSuchElementException:
-      return False
-
   def __click_job_listing_li(self, job_listing_li: WebElement) -> None:
     while True:
       try:
@@ -185,33 +132,9 @@ class LinkedinJobListingsPage(JobListingsPage):
         logging.debug("Attempting to click Job Listing li...")
         time.sleep(0.1)
 
-  def __get_job_listings_ul(self, timeout=5) -> WebElement:
-    logging.debug("Getting Job Listings ul...")
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-      try:
-        linkedin_footer = self._selenium_helper.get_element_by_aria_label(
-          "LinkedIn Footer Content",
-          self.__get_main_content_div()
-        )
-        job_listings_ul = linkedin_footer.find_element(By.XPATH, "..")
-        return job_listings_ul
-      except NoSuchElementException:
-        logging.debug("Waiting for Job Listings ul...")
-        time.sleep(0.1)
-      except StaleElementReferenceException:
-        logging.debug("Waiting for Job Listings ul...")
-        time.sleep(0.1)
-    raise TimeoutException("Timed out trying to get job listings ul.")
-
   def __get_main_content_div(self) -> WebElement | None:
     main_content_div_id = "main"
     return self._driver.find_element(By.ID, main_content_div_id)
-
-  def __get_job_header_div(self) -> WebElement:
-    job_header_selector = ".relative.job-details-jobs-unified-top-card__container--two-pane"
-    job_header = self._driver.find_element(By.CSS_SELECTOR, job_header_selector)
-    return job_header
 
   def __is_no_matching_jobs_page(self) -> bool:
     return self._selenium_helper.exact_text_is_present(

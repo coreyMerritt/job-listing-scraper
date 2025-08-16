@@ -6,7 +6,6 @@ import logging
 import time
 import traceback
 import yaml
-import undetected_chromedriver as uc
 from dacite import from_dict
 from exceptions.memory_overload_exception import MemoryOverloadException
 from exceptions.rate_limited_exception import RateLimitedException
@@ -71,8 +70,7 @@ def start() -> None:
     glassdoor_orchestration_engine,
     indeed_orchestration_engine,
     linkedin_orchestration_engine,
-    proxy_manager,
-    driver
+    proxy_manager
   )
 
 def parse_args(config: FullConfig) -> None:
@@ -96,8 +94,7 @@ def scrape(
   glassdoor_orchestration_engine: GlassdoorOrchestrationEngine,
   indeed_orchestration_engine: IndeedOrchestrationEngine,
   linkedin_orchestration_engine: LinkedinOrchestrationEngine,
-  proxy_manager: ProxyManager,
-  driver: uc.Chrome
+  proxy_manager: ProxyManager
 ) -> None:
   for some_platform in config.quick_settings.bot_behavior.platform_order:
     platform = str(some_platform).lower()
@@ -123,8 +120,6 @@ def scrape(
       except Exception:
         traceback.print_exc()
         input("\tPress enter to exit...")
-      finally:
-        driver.quit()
 
 def glassdoor(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: disable=unused-argument
   config.quick_settings.bot_behavior.platform_order = [Platform.GLASSDOOR.value]
@@ -165,6 +160,7 @@ def configure_logger():
 while True:
   try:
     start()
+    break
   except MemoryOverloadException:
     print("\nCurrent memory usage is too high. Please clean up existing tabs to continue safely.")
     input("\tPress enter to proceed...")

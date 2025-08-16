@@ -1,0 +1,2 @@
+class UnknownPageException(Exception):
+  pass

@@ -42,7 +42,7 @@ class LinkedinQueryUrlBuilder:
     return self.__url
 
   def __add_base(self) -> None:
-    self.__url = "https://www.linkedin.com/jobs/search-results/?"
+    self.__url = "https://www.linkedin.com/jobs/search/?"
 
   def __add_location(self) -> None:
     if self.__location:

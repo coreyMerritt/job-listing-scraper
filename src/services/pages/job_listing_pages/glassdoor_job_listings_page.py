@@ -58,7 +58,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
     return (total_jobs_tried, job_listing_li_index)
 
   def _get_job_listing_li(self, job_listing_li_index: int, timeout=10.0) -> WebElement:
-    job_listings_ul = self.__get_job_listings_ul()
+    job_listings_ul = self._get_job_listings_ul()
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:
@@ -76,7 +76,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
         raise NoMoreJobListingsException() from e
       except StaleElementReferenceException:
         logging.debug("Failed to get Job Listing li. Trying again...")
-        job_listings_ul = self.__get_job_listings_ul()
+        job_listings_ul = self._get_job_listings_ul()
     raise NoMoreJobListingsException()
 
   def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=10.0) -> GlassdoorJobListing:
@@ -161,7 +161,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
   def _is_next_page(self) -> bool:
     self._selenium_helper.scroll_to_bottom()
     try:
-      job_listings_ul = self.__get_job_listings_ul()
+      job_listings_ul = self._get_job_listings_ul()
       job_listings_ul.find_element(By.XPATH, "../div/div/button")
       return True
     except NoSuchElementException:
@@ -172,7 +172,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
       try:
         no_jobs_regex = r"^0 .+ Jobs in .+"
         assert not re.search(no_jobs_regex, self._driver.title)
-        starting_li_count = len(self.__get_job_listings_ul().find_elements(By.TAG_NAME, "li"))
+        starting_li_count = len(self._get_job_listings_ul().find_elements(By.TAG_NAME, "li"))
         show_more_jobs_button = self.__get_show_more_jobs_button()
         show_more_jobs_button.click()
         self.__wait_for_more_job_listings(starting_li_count)
@@ -198,7 +198,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
 
 
 
-  def __get_job_listings_ul(self) -> WebElement:
+  def _get_job_listings_ul(self) -> WebElement:
     try:
       job_listings_ul = self._selenium_helper.get_element_by_aria_label("Jobs List")
     except ElementClickInterceptedException:
@@ -289,7 +289,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:
-        job_listings_ul = self.__get_job_listings_ul()
+        job_listings_ul = self._get_job_listings_ul()
         show_more_jobs_button = job_listings_ul.find_element(By.XPATH, "../div/div/button")
         return show_more_jobs_button
       except NoSuchElementException:
@@ -301,7 +301,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
     confirm_more_job_listings_timeout = 10.0
     start_time = time.time()
     while time.time() - start_time < confirm_more_job_listings_timeout:
-      ending_li_count = len(self.__get_job_listings_ul().find_elements(By.TAG_NAME, "li"))
+      ending_li_count = len(self._get_job_listings_ul().find_elements(By.TAG_NAME, "li"))
       if starting_li_count != ending_li_count:
         break
     if starting_li_count == ending_li_count:

@@ -23,7 +23,7 @@ from services.pages.job_listing_pages.abc_job_listings_page import JobListingsPa
 class IndeedJobListingsPage(JobListingsPage):
   def is_present(self) -> bool:
     try:
-      self.__get_job_listings_ul()
+      self._get_job_listings_ul()
       return True
     except NoSuchElementException:
       return False
@@ -40,7 +40,7 @@ class IndeedJobListingsPage(JobListingsPage):
     return total_jobs_tried, job_listing_li_index
 
   def _get_job_listing_li(self, job_listing_li_index: int, timeout=10) -> WebElement:
-    job_listings_ul = self.__get_job_listings_ul()
+    job_listings_ul = self._get_job_listings_ul()
     try:
       job_listing_li = job_listings_ul.find_element(By.XPATH, f"./li[{job_listing_li_index}]")
     except NoSuchElementException as e:
@@ -103,13 +103,13 @@ class IndeedJobListingsPage(JobListingsPage):
           raise JobListingOpensInWindowException() from e
         logging.debug("Failed to get job description div. Trying again...")
         time.sleep(0.5)
+    if "indeed.com/viewjob" in self._driver.current_url:
+      raise JobListingOpensInWindowException()
     if not self.__is_additional_verification_required_page():
       raise AttributeError("Job description div has no innerHTML attribute.")
     while self.__is_additional_verification_required_page():
       logging.debug("Waiting for user to handle security checkpoint...")
       time.sleep(1)
-    if "indeed.com/viewjob" in self._driver.current_url:
-      raise JobListingOpensInWindowException()
     return self._get_job_details_div()
 
   def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10) -> JobListing:
@@ -130,6 +130,8 @@ class IndeedJobListingsPage(JobListingsPage):
       except NoSuchElementException:
         logging.warning("NoSuchElementException while trying to build job listing. Trying again...")
         time.sleep(0.1)
+    if "indeed.com/viewjob" in self._driver.current_url:
+      raise JobListingOpensInWindowException()
     raise TimeoutException("Timed out trying to build job listing.")
 
   def _need_next_page(self, job_listing_li_index: int) -> bool:
@@ -149,7 +151,7 @@ class IndeedJobListingsPage(JobListingsPage):
     except TimeoutException:
       logging.warning("Received a TimeoutException that has historically shown to not be an issue. Continuing...")
 
-  def __get_job_listings_ul(self) -> WebElement:
+  def _get_job_listings_ul(self) -> WebElement:
     potential_job_listings_ul_xpaths = [
       "/html/body/main/div/div[2]/div/div[5]/div/div[1]/div[4]/div/ul",
       "/html/body/main/div/div/div[2]/div/div[5]/div/div[1]/div[4]/div/div/ul"
@@ -158,16 +160,17 @@ class IndeedJobListingsPage(JobListingsPage):
       try:
         job_listings_ul = self._driver.find_element(By.XPATH, xpath)
         return job_listings_ul
-      except NoSuchElementException:
-        pass
+      except NoSuchElementException as e:
+        if "indeed.com/viewjob" in self._driver.current_url:
+          raise JobListingOpensInWindowException() from e
+    if "indeed.com/viewjob" in self._driver.current_url:
+      raise JobListingOpensInWindowException()
     if not self.__is_additional_verification_required_page():
       raise NoSuchElementException("Failed to find Job Listings ul.")
     while self.__is_additional_verification_required_page():
       logging.debug("Waiting for user to handle security checkpoint...")
       time.sleep(1)
-    if "indeed.com/viewjob" in self._driver.current_url:
-      raise JobListingOpensInWindowException()
-    return self.__get_job_listings_ul()
+    return self._get_job_listings_ul()
 
   def __get_current_page_number(self) -> int:
     page_buttons_ul = self.__get_page_buttons_ul()

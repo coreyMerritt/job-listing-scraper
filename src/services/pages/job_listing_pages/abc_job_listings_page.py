@@ -192,6 +192,10 @@ class JobListingsPage(ABC):
     pass
 
   @abstractmethod
+  def _get_job_listings_ul(self, timeout=10.0) -> WebElement:
+    pass
+
+  @abstractmethod
   def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=10.0) -> JobListing:
     pass
 

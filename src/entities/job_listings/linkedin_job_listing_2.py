@@ -9,7 +9,7 @@ from entities.job_listings.abc_job_listing import JobListing
 from services.misc.language_parser import LanguageParser
 
 
-class LinkedinJobListing(JobListing):
+class LinkedinJobListing2(JobListing):
   __job_header_div: WebElement | None
 
   def __init__(
@@ -36,26 +36,31 @@ class LinkedinJobListing(JobListing):
     pass
 
   def _init_title(self) -> None:
-    relative_job_title_span_xpath = "./div/a/div/div/div[2]/div[1]/div[1]/span[1]/strong"
-    job_title_span = self._get_job_listing_li().find_element(By.XPATH, relative_job_title_span_xpath)
-    self.set_title(job_title_span.text)
+    title_anchor_selector = ".disabled.ember-view.job-card-container__link.OzlfXcDyufshDyxcxHnzuayNiPLsbOSuFdfcs.job-card-list__title--link"    # pylint: disable=line-too-long
+    title_anchor = self._get_job_listing_li().find_element(By.CSS_SELECTOR, title_anchor_selector)
+    raw_title = title_anchor.get_attribute("aria-label")
+    if raw_title:
+      title = raw_title.strip()
+      self.set_title(title)
+      return
+    raise NoSuchElementException("Failed to find a proper title anchor.")
 
   def _init_company(self) -> None:
-    relative_company_div_xpath = "./div/a/div/div/div[2]/div[1]/div[2]/div"
-    company_div = self._get_job_listing_li().find_element(By.XPATH, relative_company_div_xpath)
-    self.set_company(company_div.text)
+    company_span_class = "nZRzizuJPSzSZDGSlDorCIpYNKxkEYXVs"
+    company_span = self._get_job_listing_li().find_element(By.CLASS_NAME, company_span_class)
+    self.set_company(company_span.text.strip())
 
   def _init_location(self) -> None:
-    relative_location_div_xpath = "./div/a/div/div/div[2]/div[1]/div[3]/div"
-    location_div = self._get_job_listing_li().find_element(By.XPATH, relative_location_div_xpath)
-    self.set_location(location_div.text)
+    relative_location_li_xpath = "./div/div/div[1]/div/div[2]/div[3]/ul/li/span"
+    location_span = self._get_job_listing_li().find_element(By.XPATH, relative_location_li_xpath)
+    self.set_location(location_span.text)
 
   def _init_url(self) -> None:
-    url_anchor_xpath = "./div/a"
-    url_anchor = self._get_job_listing_li().find_element(By.XPATH, url_anchor_xpath)
+    title_anchor_selector = ".disabled.ember-view.job-card-container__link.OzlfXcDyufshDyxcxHnzuayNiPLsbOSuFdfcs.job-card-list__title--link"    # pylint: disable=line-too-long
+    url_anchor = self._get_job_listing_li().find_element(By.CSS_SELECTOR, title_anchor_selector)
     href = url_anchor.get_attribute("href")
     assert href
-    job_id_regex = r"currentJobId=([0-9]+)"
+    job_id_regex = r"\/jobs\/view\/([0-9]+)"
     match = re.search(job_id_regex, href)
     assert match
     job_id = match.group(1)
