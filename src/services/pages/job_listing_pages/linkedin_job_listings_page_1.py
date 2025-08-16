@@ -28,7 +28,7 @@ class LinkedinJobListingsPage1(LinkedinJobListingsPage):
   def is_present(self) -> bool:
     return False  # TODO
 
-  def _is_zero_results(self, timeout=10) -> bool:
+  def _is_zero_results(self, timeout=30.0) -> bool:
     results_div_selector = ".t-black--light.pv4.text-body-small.mr2"
     results_regex = r"([0-9]+)\ result"
     start_time = time.time()
@@ -51,7 +51,7 @@ class LinkedinJobListingsPage1(LinkedinJobListingsPage):
         time.sleep(0.1)
     raise NoResultsDataException("Failed to find results div.")
 
-  def _get_job_listings_ul(self, timeout=5) -> WebElement:
+  def _get_job_listings_ul(self, timeout=5.0) -> WebElement:
     logging.debug("Getting Job Listings ul...")
     start_time = time.time()
     while time.time() - start_time < timeout:
@@ -88,7 +88,7 @@ class LinkedinJobListingsPage1(LinkedinJobListingsPage):
       #   time.sleep(0.1)
     raise NoSuchElementException("Failed to find full job details div.")
 
-  def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10) -> JobListing:
+  def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10.0) -> JobListing:
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:

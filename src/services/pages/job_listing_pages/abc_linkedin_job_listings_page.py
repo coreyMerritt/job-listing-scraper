@@ -26,7 +26,7 @@ class LinkedinJobListingsPage(JobListingsPage):
     pass
 
   @abstractmethod
-  def _is_zero_results(self, timeout=10) -> bool:
+  def _is_zero_results(self, timeout=10.0) -> bool:
     pass
 
   @abstractmethod
@@ -34,11 +34,11 @@ class LinkedinJobListingsPage(JobListingsPage):
     pass
 
   @abstractmethod
-  def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10) -> JobListing:
+  def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10.0) -> JobListing:
     pass
 
   @abstractmethod
-  def _get_job_listings_ul(self, timeout=5) -> WebElement:
+  def _get_job_listings_ul(self, timeout=5.0) -> WebElement:
     pass
 
   @abstractmethod
@@ -55,7 +55,7 @@ class LinkedinJobListingsPage(JobListingsPage):
       job_listing_li_index = 1
     return (total_jobs_tried, job_listing_li_index)
 
-  def _get_job_listing_li(self, job_listing_li_index: int, timeout=10) -> WebElement:
+  def _get_job_listing_li(self, job_listing_li_index: int, timeout=10.0) -> WebElement:
     relative_job_listing_li_xpath = f"./li[{job_listing_li_index}]"
     start_time = time.time()
     while time.time() - start_time < timeout:
@@ -80,7 +80,7 @@ class LinkedinJobListingsPage(JobListingsPage):
     random_time = random.random() * 5
     time.sleep(random_time)
 
-  def _click_job(self, job_listing_li: WebElement, timeout=10) -> None:
+  def _click_job(self, job_listing_li: WebElement, timeout=10.0) -> None:
     self._selenium_helper.scroll_into_view(job_listing_li)
     self.__click_job_listing_li(job_listing_li)
     start_time = time.time()
@@ -91,7 +91,7 @@ class LinkedinJobListingsPage(JobListingsPage):
       time.sleep(0.1)
     raise TimeoutError("Timed out waiting for full Job Listing to load.")
 
-  def _get_job_details_div(self, timeout=30) -> WebElement:
+  def _get_job_details_div(self, timeout=30.0) -> WebElement:
     job_details_div_selector = "div.jobs-description-content__text--stretch"
     start_time = time.time()
     while time.time() - start_time < timeout:

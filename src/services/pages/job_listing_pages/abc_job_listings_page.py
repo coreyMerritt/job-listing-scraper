@@ -83,7 +83,11 @@ class JobListingsPage(ABC):
         logging.info("Scrolling Job Listing Li into view...")
         self._selenium_helper.scroll_into_view(job_listing_li)
         logging.info("Building Brief Job Listing...")
-        brief_job_listing = self._build_brief_job_listing(job_listing_li)
+        try:
+          brief_job_listing = self._build_brief_job_listing(job_listing_li)
+        except StaleElementReferenceException:
+          job_listing_li = self._get_job_listing_li(job_listing_li_index)
+          brief_job_listing = self._build_brief_job_listing(job_listing_li)
         brief_job_listing.print_most()
         if brief_job_listing.to_minimal_str() in self._current_session_jobs:
           logging.info("Ignoring Brief Job Listing because we've already applied this session. Skipping...")
@@ -97,7 +101,6 @@ class JobListingsPage(ABC):
           logging.info("Adding Brief Job Listing to database...")
           self._add_job_listing_to_db(brief_job_listing)
           continue
-        self._anti_rate_limit_wait()
         try:
           logging.info("Clicking Job Listing Li...")
           self._click_job(job_listing_li)
@@ -129,6 +132,7 @@ class JobListingsPage(ABC):
         logging.info("Adding Job Listing to Database...")
         self._add_job_listing_to_db(job_listing)
         self._handle_potential_overload()
+        self._anti_rate_limit_wait()
       except GlassdoorZeroJobsBugException:
         logging.info("Show more jobs button spawned zero jobs. Refreshing and trying again...")
         while True:

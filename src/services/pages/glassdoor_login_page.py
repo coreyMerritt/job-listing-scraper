@@ -83,7 +83,7 @@ class GlassdoorLoginPage:
       lambda d: d.execute_script("return document.readyState") == "complete"
     )
 
-  def __wait_for_email_form(self, timeout=10) -> None:
+  def __wait_for_email_form(self, timeout=10.0) -> None:
     email_form_name = "emailForm"
     start_time = time.time()
     while time.time() - start_time < timeout:

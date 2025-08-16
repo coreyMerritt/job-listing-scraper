@@ -33,14 +33,15 @@ class LinkedinJobListingsPage2(LinkedinJobListingsPage):
     except NoSuchElementException:
       return False
 
-  def _is_zero_results(self, timeout=10) -> bool:
+  def _is_zero_results(self, timeout=30.0) -> bool:
     results_div_selector = ".jobs-search-results-list__subtitle"
     results_regex = r"([0-9]+)\ result"
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:
         results_div = self._driver.find_element(By.CSS_SELECTOR, results_div_selector)
-        results_text = results_div.text
+        results_span = results_div.find_element(By.XPATH, "./span")
+        results_text = results_span.text
         if results_text:
           match = re.match(results_regex, results_text)
           if match:
@@ -56,7 +57,7 @@ class LinkedinJobListingsPage2(LinkedinJobListingsPage):
         time.sleep(0.1)
     raise NoResultsDataException("Failed to find results div.")
 
-  def _get_job_listings_ul(self, timeout=5) -> WebElement:
+  def _get_job_listings_ul(self, timeout=5.0) -> WebElement:
     logging.debug("Getting Job Listings ul...")
     start_time = time.time()
     while time.time() - start_time < timeout:

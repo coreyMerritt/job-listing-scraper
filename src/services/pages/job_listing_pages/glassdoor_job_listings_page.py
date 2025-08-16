@@ -134,7 +134,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
   def _anti_rate_limit_wait(self) -> None:
     pass
 
-  def _click_job(self, job_listing_li: WebElement, timeout=10) -> None:
+  def _click_job(self, job_listing_li: WebElement, timeout=10.0) -> None:
     try:
       if self.__is_create_job_dialog():
         self.__remove_create_job_dialog()

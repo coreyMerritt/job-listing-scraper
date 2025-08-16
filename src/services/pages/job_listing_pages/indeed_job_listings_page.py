@@ -28,7 +28,7 @@ class IndeedJobListingsPage(JobListingsPage):
     except NoSuchElementException:
       return False
 
-  def _is_zero_results(self, timeout=10) -> bool:
+  def _is_zero_results(self, timeout=10.0) -> bool:
     return False  # TODO
 
   def _handle_incrementors(self, total_jobs_tried: int, job_listing_li_index: int) -> Tuple[int, int]:
@@ -39,7 +39,7 @@ class IndeedJobListingsPage(JobListingsPage):
       job_listing_li_index = (total_jobs_tried % 20) + 1
     return total_jobs_tried, job_listing_li_index
 
-  def _get_job_listing_li(self, job_listing_li_index: int, timeout=10) -> WebElement:
+  def _get_job_listing_li(self, job_listing_li_index: int, timeout=10.0) -> WebElement:
     job_listings_ul = self._get_job_listings_ul()
     try:
       job_listing_li = job_listings_ul.find_element(By.XPATH, f"./li[{job_listing_li_index}]")
@@ -85,13 +85,13 @@ class IndeedJobListingsPage(JobListingsPage):
   def _anti_rate_limit_wait(self) -> None:
     pass
 
-  def _click_job(self, job_listing_li: WebElement, timeout=10) -> None:
+  def _click_job(self, job_listing_li: WebElement, timeout=10.0) -> None:
     WebDriverWait(self._driver, timeout).until(
       EC.element_to_be_clickable(job_listing_li)
     )
     job_listing_li.click()
 
-  def _get_job_details_div(self, timeout=30) -> WebElement:
+  def _get_job_details_div(self, timeout=30.0) -> WebElement:
     job_details_div_id = "jobDescriptionText"
     start_time = time.time()
     while time.time() - start_time < timeout:
@@ -112,7 +112,7 @@ class IndeedJobListingsPage(JobListingsPage):
       time.sleep(1)
     return self._get_job_details_div()
 
-  def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10) -> JobListing:
+  def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10.0) -> JobListing:
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:
@@ -214,7 +214,7 @@ class IndeedJobListingsPage(JobListingsPage):
         visible_page_numbers.append(int(page_anchor_text))
     return visible_page_numbers
 
-  def __get_page_buttons_ul(self, timeout=5) -> WebElement:
+  def __get_page_buttons_ul(self, timeout=5.0) -> WebElement:
     potential_page_buttons_ul_xpaths = [
       "/html/body/main/div/div[2]/div/div[5]/div/div[1]/nav/ul",
       "/html/body/main/div/div/div[2]/div/div[5]/div/div[1]/nav/ul"

@@ -62,7 +62,7 @@ class IndeedOneTimeCodePage:
       logging.debug("Waiting for captcha resolution...")
       time.sleep(0.5)
 
-  def __wait_for_one_time_code_label(self, timeout=10) -> None:
+  def __wait_for_one_time_code_label(self, timeout=10.0) -> None:
     start_time = time.time()
     while time.time() - start_time < timeout:
       if self.__selenium_helper.text_is_present(

@@ -17,7 +17,7 @@ class IndeedHomePage:
     self.__click_sign_in_anchor()
     self.__wait_for_vague_email_address_label()
 
-  def __wait_for_security_checkpoint(self, timeout=86400) -> None:
+  def __wait_for_security_checkpoint(self, timeout=86400.0) -> None:
     start_time = time.time()
     while time.time() - start_time < timeout:
       if self.__selenium_helper.exact_text_is_present(
@@ -29,7 +29,7 @@ class IndeedHomePage:
       else:
         return
 
-  def __wait_for_sign_in_anchor(self, timeout=3) -> None:
+  def __wait_for_sign_in_anchor(self, timeout=3.0) -> None:
     start_time = time.time()
     while time.time() - start_time < timeout:
       if self.__selenium_helper.exact_text_is_present(
@@ -51,7 +51,7 @@ class IndeedHomePage:
       except StaleElementReferenceException:
         pass
 
-  def __wait_for_vague_email_address_label(self, timeout=9999) -> None:
+  def __wait_for_vague_email_address_label(self, timeout=72000.0) -> None:
     start_time = time.time()
     while time.time() - start_time < timeout:
       if self.__selenium_helper.text_is_present(
