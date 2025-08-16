@@ -111,12 +111,12 @@ class GlassdoorJobListingsPage(JobListingsPage):
           job_details_div
         )
         return job_listing
-      except StaleElementReferenceException:
+      except StaleElementReferenceException as e:
         if not self.__job_details_div_is_present():
           if self.__page_didnt_load_is_present():
             self.__reload_job_description()
-        logging.warning("StaleElementReferenceException while trying to build job listing. Trying again...")
-        time.sleep(0.1)
+            continue
+        raise e
       except NoSuchElementException:
         logging.warning("NoSuchElementException while trying to build job listing. Trying again...")
         time.sleep(0.1)
@@ -196,9 +196,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
         self.__get_show_more_jobs_button()
         time.sleep(0.1)
 
-
-
-  def _get_job_listings_ul(self) -> WebElement:
+  def _get_job_listings_ul(self, timeout=5.0) -> WebElement:
     try:
       job_listings_ul = self._selenium_helper.get_element_by_aria_label("Jobs List")
     except ElementClickInterceptedException:

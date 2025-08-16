@@ -125,8 +125,7 @@ class IndeedJobListingsPage(JobListingsPage):
       except StaleElementReferenceException as e:
         if "indeed.com/viewjob" in self._driver.current_url:
           raise JobListingOpensInWindowException() from e
-        logging.warning("StaleElementReferenceException while trying to build job listing. Trying again...")
-        time.sleep(0.1)
+        raise e
       except NoSuchElementException:
         logging.warning("NoSuchElementException while trying to build job listing. Trying again...")
         time.sleep(0.1)
@@ -151,7 +150,7 @@ class IndeedJobListingsPage(JobListingsPage):
     except TimeoutException:
       logging.warning("Received a TimeoutException that has historically shown to not be an issue. Continuing...")
 
-  def _get_job_listings_ul(self) -> WebElement:
+  def _get_job_listings_ul(self, timeout=5.0) -> WebElement:
     potential_job_listings_ul_xpaths = [
       "/html/body/main/div/div[2]/div/div[5]/div/div[1]/div[4]/div/ul",
       "/html/body/main/div/div/div[2]/div/div[5]/div/div[1]/div[4]/div/div/ul"

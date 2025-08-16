@@ -5,7 +5,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import (
   NoSuchElementException,
-  StaleElementReferenceException,
   TimeoutException
 )
 from entities.job_listings.abc_job_listing import JobListing
@@ -58,9 +57,6 @@ class LinkedinJobListingsPage1(LinkedinJobListingsPage):
       except NoSuchElementException:
         logging.debug("Waiting for Job Listings ul...")
         time.sleep(0.1)
-      except StaleElementReferenceException:
-        logging.debug("Waiting for Job Listings ul...")
-        time.sleep(0.1)
     raise TimeoutException("Timed out trying to get job listings ul.")
 
   def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=4.0) -> LinkedinJobListing1:
@@ -73,9 +69,6 @@ class LinkedinJobListingsPage1(LinkedinJobListingsPage):
           job_listing_li
         )
         return job_listing
-      except StaleElementReferenceException:
-        logging.warning("StaleElementReferenceException while trying to build brief job listing. Trying again...")
-        time.sleep(0.1)
       except NoSuchElementException:
         logging.warning("NoSuchElementException while trying to build brief job listing. Trying again...")
         time.sleep(0.1)
@@ -94,9 +87,6 @@ class LinkedinJobListingsPage1(LinkedinJobListingsPage):
           job_header_div
         )
         return job_listing
-      except StaleElementReferenceException:
-        logging.warning("StaleElementReferenceException while trying to build job listing. Trying again...")
-        time.sleep(0.1)
       except NoSuchElementException:
         logging.warning("NoSuchElementException while trying to build job listing. Trying again...")
         time.sleep(0.1)

@@ -131,6 +131,9 @@ class JobListingsPage(ABC):
           except AssertionError:
             logging.warning("Failed to create job listing. Trying again...")
             time.sleep(0.1)
+          except StaleElementReferenceException:
+            logging.warning("Stale element while trying to create job listing. Trying again...")
+            time.sleep(0.1)
         job_listing.print_most()
         if not self._criteria_checker.passes(self._quick_settings, self._universal_config, job_listing):
           logging.info("Ignoring Job Listing because it does not meet ignore/ideal criteria.")

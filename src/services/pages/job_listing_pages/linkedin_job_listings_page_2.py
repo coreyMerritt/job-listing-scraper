@@ -75,9 +75,6 @@ class LinkedinJobListingsPage2(LinkedinJobListingsPage):
           job_listing_li
         )
         return job_listing
-      except StaleElementReferenceException:
-        logging.warning("StaleElementReferenceException while trying to build brief job listing. Trying again...")
-        time.sleep(0.1)
       except NoSuchElementException:
         logging.warning("NoSuchElementException while trying to build brief job listing. Trying again...")
         time.sleep(0.1)
@@ -101,9 +98,6 @@ class LinkedinJobListingsPage2(LinkedinJobListingsPage):
           job_header_div
         )
         return job_listing
-      except StaleElementReferenceException:
-        logging.warning("StaleElementReferenceException while trying to build job listing. Trying again...")
-        time.sleep(0.1)
       except NoSuchElementException:
         logging.warning("NoSuchElementException while trying to build job listing. Trying again...")
         time.sleep(0.1)
