@@ -12,27 +12,27 @@ class IndeedJobListing(JobListing):
       pay_h2 = self._get_job_listing_li().find_element(By.CSS_SELECTOR, pay_h2_selector)
       raw_pay = pay_h2.text
       min_salary_from_range_regex = r"\$([0-9]+,?[0-9]+) - \$[0-9]+,?[0-9]+"
-      min_salary_from_range_match = re.match(min_salary_from_range_regex, raw_pay)
+      min_salary_from_range_match = re.search(min_salary_from_range_regex, raw_pay)
       if min_salary_from_range_match:
         first_min_salary_from_range_match = str(min_salary_from_range_match.group(1))
         salary_match_as_float = float(first_min_salary_from_range_match.replace(",", ""))
         self.set_min_pay(salary_match_as_float)
         return
       min_hourly_from_range_regex = r"\$([0-9]+) - \$[0-9]+"
-      min_hourly_from_range_match = re.match(min_hourly_from_range_regex, raw_pay)
+      min_hourly_from_range_match = re.search(min_hourly_from_range_regex, raw_pay)
       if min_hourly_from_range_match:
         first_min_hourly_from_range_match = float(min_hourly_from_range_match.group(1)) * 2080
         self.set_min_pay(first_min_hourly_from_range_match)
         return
       single_salary_regex = r"\$([0-9]+,[0-9]+)"
-      single_salary_match = re.match(single_salary_regex, raw_pay)
+      single_salary_match = re.search(single_salary_regex, raw_pay)
       if single_salary_match:
         first_single_salary_match = str(single_salary_match.group(1))
         salary_match_as_float = float(first_single_salary_match.replace(",", ""))
         self.set_min_pay(salary_match_as_float)
         return
       single_hourly_regex = r"\$([0-9]+)"
-      single_hourly_match = re.match(single_hourly_regex, raw_pay)
+      single_hourly_match = re.search(single_hourly_regex, raw_pay)
       if single_hourly_match:
         first_single_hourly_match = float(single_hourly_match.group(1)) * 2080
         self.set_min_pay(first_single_hourly_match)
@@ -47,27 +47,27 @@ class IndeedJobListing(JobListing):
       pay_h2 = self._get_job_listing_li().find_element(By.CSS_SELECTOR, pay_h2_selector)
       raw_pay = pay_h2.text
       max_salary_from_range_regex = r"\$[0-9]+,?[0-9]+ - \$([0-9]+,?[0-9]+)"
-      max_salary_from_range_match = re.match(max_salary_from_range_regex, raw_pay)
+      max_salary_from_range_match = re.search(max_salary_from_range_regex, raw_pay)
       if max_salary_from_range_match:
         first_max_salary_from_range_match = str(max_salary_from_range_match.group(1))
         salary_match_as_float = float(first_max_salary_from_range_match.replace(",", ""))
         self.set_max_pay(salary_match_as_float)
         return
       max_hourly_from_range_regex = r"\$[0-9]+ - \$([0-9]+)"
-      max_hourly_from_range_match = re.match(max_hourly_from_range_regex, raw_pay)
+      max_hourly_from_range_match = re.search(max_hourly_from_range_regex, raw_pay)
       if max_hourly_from_range_match:
         first_max_hourly_from_range_match = float(max_hourly_from_range_match.group(1)) * 2080
         self.set_max_pay(first_max_hourly_from_range_match)
         return
       single_salary_regex = r"\$([0-9]+,[0-9]+)"
-      single_salary_match = re.match(single_salary_regex, raw_pay)
+      single_salary_match = re.search(single_salary_regex, raw_pay)
       if single_salary_match:
         first_single_salary_match = str(single_salary_match.group(1))
         salary_match_as_float = float(first_single_salary_match.replace(",", ""))
         self.set_max_pay(salary_match_as_float)
         return
       single_hourly_regex = r"\$([0-9]+)"
-      single_hourly_match = re.match(single_hourly_regex, raw_pay)
+      single_hourly_match = re.search(single_hourly_regex, raw_pay)
       if single_hourly_match:
         first_single_hourly_match = float(single_hourly_match.group(1)) * 2080
         self.set_max_pay(first_single_hourly_match)

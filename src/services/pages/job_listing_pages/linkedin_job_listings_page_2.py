@@ -43,7 +43,7 @@ class LinkedinJobListingsPage2(LinkedinJobListingsPage):
         results_span = results_div.find_element(By.XPATH, "./span")
         results_text = results_span.text
         if results_text:
-          match = re.match(results_regex, results_text)
+          match = re.search(results_regex, results_text)
           if match:
             group = match.group(1)
             results = int(group)

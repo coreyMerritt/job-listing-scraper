@@ -120,32 +120,32 @@ class LinkedinJobListing2(JobListing):
     try:
       listing_age = self._get_job_listing_li().find_element(By.TAG_NAME, "time")
       listing_age_text = listing_age.text
-      minutes = re.match(r"([0-9]+) minute[s]? ago", listing_age_text)
+      minutes = re.search(r"([0-9]+) minute[s]? ago", listing_age_text)
       if minutes:
         minutes = int(minutes.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(minutes=minutes))
         return
-      hours = re.match(r"([0-9]+) hour[s]? ago", listing_age_text)
+      hours = re.search(r"([0-9]+) hour[s]? ago", listing_age_text)
       if hours:
         hours = int(hours.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(hours=hours))
         return
-      days = re.match(r"([0-9]+) day[s]? ago", listing_age_text)
+      days = re.search(r"([0-9]+) day[s]? ago", listing_age_text)
       if days:
         days = int(days.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(days=days))
         return
-      weeks = re.match(r"([0-9]+) week[s]? ago", listing_age_text)
+      weeks = re.search(r"([0-9]+) week[s]? ago", listing_age_text)
       if weeks:
         weeks = int(weeks.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(weeks=weeks))
         return
-      months = re.match(r"([0-9]+) month[s]? ago", listing_age_text)
+      months = re.search(r"([0-9]+) month[s]? ago", listing_age_text)
       if months:
         months = int(months.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(weeks=(months * 4.345)))
         return
-      years = re.match(r"([0-9]+) year[s]? ago", listing_age_text)
+      years = re.search(r"([0-9]+) year[s]? ago", listing_age_text)
       if years:
         years = int(years.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(weeks=(years * 52)))

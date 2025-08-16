@@ -37,7 +37,7 @@ class LinkedinJobListingsPage1(LinkedinJobListingsPage):
         results_div = self._driver.find_element(By.CSS_SELECTOR, results_div_selector)
         results_text = results_div.text
         if results_text:
-          match = re.match(results_regex, results_text)
+          match = re.search(results_regex, results_text)
           if match:
             group = match.group(1)
             results = int(group)

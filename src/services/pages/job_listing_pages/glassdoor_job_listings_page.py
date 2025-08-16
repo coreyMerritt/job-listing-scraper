@@ -40,7 +40,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
       try:
         search_results_h1 = self._driver.find_element(By.CLASS_NAME, search_results_class)
         search_results_text = search_results_h1.text.lower().replace(",", "").strip()
-        search_results_regex = re.match(r"^([0-9]+) .+", search_results_text)
+        search_results_regex = re.search(r"^([0-9]+) .+", search_results_text)
         assert search_results_regex
         search_results_job_count = search_results_regex.group(1)
         logging.debug("Found %s results.", search_results_job_count)

@@ -15,25 +15,25 @@ class GlassdoorJobListing(JobListing):
       job_salary_div = self._get_job_listing_li().find_element(By.CLASS_NAME, job_salary_div_class)
       job_salary_div_text = job_salary_div.text
       min_salary_from_range_regex = r"\$([0-9]+)[k|K] - \$[0-9]+[k|K]"
-      min_salary_from_range_match = re.match(min_salary_from_range_regex, job_salary_div_text)
+      min_salary_from_range_match = re.search(min_salary_from_range_regex, job_salary_div_text)
       if min_salary_from_range_match:
         first_min_salary_from_range_match = float(min_salary_from_range_match.group(1)) * 1000
         self.set_min_pay(first_min_salary_from_range_match)
         return
       min_hourly_from_range_regex = r"\$([0-9]+[.]?[0-9]+) - \$[0-9]+[.]?[0-9]+"
-      min_hourly_from_range_match = re.match(min_hourly_from_range_regex, job_salary_div_text)
+      min_hourly_from_range_match = re.search(min_hourly_from_range_regex, job_salary_div_text)
       if min_hourly_from_range_match:
         first_min_hourly_from_range_match = float(min_hourly_from_range_match.group(1)) * 2080
         self.set_min_pay(first_min_hourly_from_range_match)
         return
       single_hourly_regex = r"\$([0-9]+[.]?[0-9]+)"
-      single_hourly_match = re.match(single_hourly_regex, job_salary_div_text)
+      single_hourly_match = re.search(single_hourly_regex, job_salary_div_text)
       if single_hourly_match:
         first_single_hourly_match = float(single_hourly_match.group(1)) * 2080
         self.set_min_pay(first_single_hourly_match)
         return
       single_salary_regex = r"\$([0-9]+)[k|K]"
-      single_salary_match = re.match(single_salary_regex, job_salary_div_text)
+      single_salary_match = re.search(single_salary_regex, job_salary_div_text)
       if single_salary_match:
         first_single_salary_match = float(single_salary_match.group(1)) * 1000
         self.set_min_pay(first_single_salary_match)
@@ -48,25 +48,25 @@ class GlassdoorJobListing(JobListing):
       job_salary_div = self._get_job_listing_li().find_element(By.CLASS_NAME, job_salary_div_class)
       job_salary_div_text = job_salary_div.text
       max_salary_from_range_regex = r"\$[0-9]+[k|K] - \$([0-9]+)[k|K]"
-      max_salary_from_range_match = re.match(max_salary_from_range_regex, job_salary_div_text)
+      max_salary_from_range_match = re.search(max_salary_from_range_regex, job_salary_div_text)
       if max_salary_from_range_match:
         first_max_salary_from_range_match = float(max_salary_from_range_match.group(1)) * 1000
         self.set_max_pay(first_max_salary_from_range_match)
         return
       max_hourly_from_range_regex = r"\$[0-9]+[.]?[0-9]+ - \$([0-9]+[.]?[0-9]+)"
-      max_hourly_from_range_match = re.match(max_hourly_from_range_regex, job_salary_div_text)
+      max_hourly_from_range_match = re.search(max_hourly_from_range_regex, job_salary_div_text)
       if max_hourly_from_range_match:
         first_max_hourly_from_range_match = float(max_hourly_from_range_match.group(1)) * 2080
         self.set_max_pay(first_max_hourly_from_range_match)
         return
       single_salary_regex = r"\$([0-9]+)[k|K]"
-      single_salary_match = re.match(single_salary_regex, job_salary_div_text)
+      single_salary_match = re.search(single_salary_regex, job_salary_div_text)
       if single_salary_match:
         first_single_salary_match = float(single_salary_match.group(1)) * 1000
         self.set_max_pay(first_single_salary_match)
         return
       single_hourly_regex = r"\$([0-9]+[.]?[0-9]+)"
-      single_hourly_match = re.match(single_hourly_regex, job_salary_div_text)
+      single_hourly_match = re.search(single_hourly_regex, job_salary_div_text)
       if single_hourly_match:
         first_single_hourly_match = float(single_hourly_match.group(1)) * 2080
         self.set_max_pay(first_single_hourly_match)
@@ -141,27 +141,27 @@ class GlassdoorJobListing(JobListing):
     try:
       listing_age = self._get_job_listing_li().find_element(By.CLASS_NAME, listing_age_class)
       listing_age_text = listing_age.text
-      hours = re.match(r"([0-9]+)h", listing_age_text)
+      hours = re.search(r"([0-9]+)h", listing_age_text)
       if hours:
         hours = int(hours.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(hours=hours))
         return
-      days = re.match(r"([0-9]+)d", listing_age_text)
+      days = re.search(r"([0-9]+)d", listing_age_text)
       if days:
         days = int(days.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(days=days))
         return
-      weeks = re.match(r"([0-9]+)w", listing_age_text)
+      weeks = re.search(r"([0-9]+)w", listing_age_text)
       if weeks:
         weeks = int(weeks.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(weeks=weeks))
         return
-      months = re.match(r"([0-9]+)m", listing_age_text)
+      months = re.search(r"([0-9]+)m", listing_age_text)
       if months:
         months = int(months.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(weeks=(months * 4.345)))
         return
-      years = re.match(r"([0-9]+)y", listing_age_text)
+      years = re.search(r"([0-9]+)y", listing_age_text)
       if years:
         years = int(years.group(1))
         self.set_post_time(datetime.now(timezone.utc) - timedelta(weeks=(years * 52)))

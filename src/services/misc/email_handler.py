@@ -8,7 +8,7 @@ import time
 
 class EmailHandler:
 
-  def get_indeed_one_time_code_from_mdc(self, timeout=10) -> str:
+  def get_indeed_one_time_code_from_mdc(self, timeout=10.0) -> str:
     USERNAME = os.getenv("MAIL_DOT_COM_EMAIL")
     PASSWORD = os.getenv("MAIL_DOT_COM_PASS")
     assert USERNAME
