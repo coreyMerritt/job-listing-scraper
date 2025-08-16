@@ -1,12 +1,9 @@
 import logging
-import random
 import re
 import time
-from typing import Tuple
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import (
-  ElementClickInterceptedException,
   NoSuchElementException,
   StaleElementReferenceException,
   TimeoutException
@@ -14,12 +11,8 @@ from selenium.common.exceptions import (
 from entities.job_listings.abc_job_listing import JobListing
 from entities.job_listings.linkedin_job_listing_1 import LinkedinJobListing1
 from exceptions.linkedin_something_went_wrong_div_exception import LinkedinSomethingWentWrongException
-from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.no_results_data_exception import NoResultsDataException
 from exceptions.rate_limited_exception import RateLimitedException
-from exceptions.something_went_wrong_page_exception import SomethingWentWrongPageException
-from exceptions.zero_search_results_exception import ZeroSearchResultsException
-from models.enums.element_type import ElementType
 from models.enums.platform import Platform
 from services.pages.job_listing_pages.abc_linkedin_job_listings_page import LinkedinJobListingsPage
 
@@ -83,9 +76,9 @@ class LinkedinJobListingsPage1(LinkedinJobListingsPage):
       except StaleElementReferenceException:
         logging.warning("StaleElementReferenceException while trying to build brief job listing. Trying again...")
         time.sleep(0.1)
-      # except NoSuchElementException:
-      #   logging.warning("NoSuchElementException while trying to build brief job listing. Trying again...")
-      #   time.sleep(0.1)
+      except NoSuchElementException:
+        logging.warning("NoSuchElementException while trying to build brief job listing. Trying again...")
+        time.sleep(0.1)
     raise NoSuchElementException("Failed to find full job details div.")
 
   def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10.0) -> JobListing:
