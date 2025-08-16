@@ -18,7 +18,7 @@ from services.pages.job_listing_pages.abc_linkedin_job_listings_page import Link
 
 class LinkedinJobListingsPage1(LinkedinJobListingsPage):
   def is_present(self) -> bool:
-    return False  # TODO
+    return "jobs/search-results" in self._driver.current_url
 
   def _is_zero_results(self, timeout=30.0) -> bool:
     results_div_selector = ".t-black--light.pv4.text-body-small.mr2"
