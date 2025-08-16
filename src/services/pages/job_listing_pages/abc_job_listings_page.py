@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import time
 from typing import Set, Tuple
 import logging
 import psutil
@@ -112,19 +113,24 @@ class JobListingsPage(ABC):
         except StaleElementReferenceException:
           job_listing_li = self._get_job_listing_li(job_listing_li_index)
           self._click_job(job_listing_li)
-        try:
-          logging.info("Getting Job Details Div...")
-          job_details_div = self._get_job_details_div()
-          logging.info("Building Job Listing...")
-          job_listing = self._build_job_listing(job_listing_li, job_details_div)
-        except JobDetailsDidntLoadException:
-          if self._quick_settings.bot_behavior.fallback_to_brief_on_load_issues:
-            logging.warning("Job Details failed to load. Submitting Brief Job Listing instead...")
-            logging.info("Adding Brief Job Listing to database...")
-            self._add_job_listing_to_db(brief_job_listing)
-          else:
-            logging.warning("Job Details failed to load. Skipping...")
-          continue
+        while True:
+          try:
+            logging.info("Getting Job Details Div...")
+            job_details_div = self._get_job_details_div()
+            logging.info("Building Job Listing...")
+            job_listing = self._build_job_listing(job_listing_li, job_details_div)
+            break
+          except JobDetailsDidntLoadException:
+            if self._quick_settings.bot_behavior.fallback_to_brief_on_load_issues:
+              logging.warning("Job Details failed to load. Submitting Brief Job Listing instead...")
+              logging.info("Adding Brief Job Listing to database...")
+              self._add_job_listing_to_db(brief_job_listing)
+            else:
+              logging.warning("Job Details failed to load. Skipping...")
+            continue
+          except AssertionError:
+            logging.warning("Failed to create job listing. Trying again...")
+            time.sleep(0.1)
         job_listing.print_most()
         if not self._criteria_checker.passes(self._quick_settings, self._universal_config, job_listing):
           logging.info("Ignoring Job Listing because it does not meet ignore/ideal criteria.")
