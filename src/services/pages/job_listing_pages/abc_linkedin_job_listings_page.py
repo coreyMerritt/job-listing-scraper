@@ -11,6 +11,7 @@ from selenium.common.exceptions import (
   TimeoutException
 )
 from entities.job_listings.abc_job_listing import JobListing
+from exceptions.job_details_didnt_load_exception import JobDetailsDidntLoadException
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.rate_limited_exception import RateLimitedException
 from exceptions.something_went_wrong_page_exception import SomethingWentWrongPageException
@@ -94,13 +95,23 @@ class LinkedinJobListingsPage(JobListingsPage):
   def _get_job_details_div(self, timeout=30.0) -> WebElement:
     job_details_div_selector = "div.jobs-description-content__text--stretch"
     start_time = time.time()
+    job_listing_is_loading = False
     while time.time() - start_time < timeout:
       try:
         job_details_div = self._driver.find_element(By.CSS_SELECTOR, job_details_div_selector)
+        job_details_html = job_details_div.get_attribute("innerHTML")
+        if not job_details_html:
+          job_listing_is_loading = True
+          continue
+        if len(job_details_html) < 100:
+          job_listing_is_loading = True
+          continue
         return job_details_div
       except NoSuchElementException:
         logging.info("Waiting for job description content div...")
         time.sleep(0.1)
+    if job_listing_is_loading:
+      raise JobDetailsDidntLoadException()
     raise TimeoutException("Timed out waiting for job description content div.")
 
   def _need_next_page(self, job_listing_li_index: int) -> bool:

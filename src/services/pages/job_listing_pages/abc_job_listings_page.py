@@ -81,14 +81,20 @@ class JobListingsPage(ABC):
         logging.info("Attempting Job Listing: %s...", f"{total_jobs_tried:,}")
         logging.info("Trying to get Job Listing Li...")
         job_listing_li = self._get_job_listing_li(job_listing_li_index)
-        logging.info("Scrolling Job Listing Li into view...")
-        self._selenium_helper.scroll_into_view(job_listing_li)
-        logging.info("Building Brief Job Listing...")
-        try:
-          brief_job_listing = self._build_brief_job_listing(job_listing_li)
-        except StaleElementReferenceException:
-          job_listing_li = self._get_job_listing_li(job_listing_li_index)
-          brief_job_listing = self._build_brief_job_listing(job_listing_li)
+        while True:
+          try:
+            logging.info("Scrolling Job Listing Li into view...")
+            self._selenium_helper.scroll_into_view(job_listing_li)
+            break
+          except StaleElementReferenceException:
+            job_listing_li = self._get_job_listing_li(job_listing_li_index)
+        while True:
+          try:
+            logging.info("Building Brief Job Listing...")
+            brief_job_listing = self._build_brief_job_listing(job_listing_li)
+            break
+          except StaleElementReferenceException:
+            job_listing_li = self._get_job_listing_li(job_listing_li_index)
         brief_job_listing.print_most()
         if brief_job_listing.to_minimal_str() in self._current_session_jobs:
           logging.info("Ignoring Brief Job Listing because we've already applied this session. Skipping...")
@@ -102,17 +108,13 @@ class JobListingsPage(ABC):
           logging.info("Adding Brief Job Listing to database...")
           self._add_job_listing_to_db(brief_job_listing)
           continue
-        try:
-          logging.info("Clicking Job Listing Li...")
-          self._click_job(job_listing_li)
-        except PageFrozeException:
-          logging.warning("Pages seems to have froze. Refreshing and trying query again...")
-          self._driver.refresh()
-          self.scrape_current_query()
-          return
-        except StaleElementReferenceException:
-          job_listing_li = self._get_job_listing_li(job_listing_li_index)
-          self._click_job(job_listing_li)
+        while True:
+          try:
+            logging.info("Clicking Job Listing Li...")
+            self._click_job(job_listing_li)
+            break
+          except StaleElementReferenceException:
+            job_listing_li = self._get_job_listing_li(job_listing_li_index)
         while True:
           try:
             logging.info("Getting Job Details Div...")
@@ -155,6 +157,9 @@ class JobListingsPage(ABC):
       except LinkedinSomethingWentWrongException:
         logging.info("Found something went wrong div. Skipping...")
         continue
+      except JobDetailsDidntLoadException:
+        logging.warning("Job details didn't load. Skipping...")
+        continue
       except JobListingIsAdvertisementException:
         logging.info("Skipping Job Listing because it is an advertisement.")
         continue
@@ -177,6 +182,11 @@ class JobListingsPage(ABC):
         return
       except NoResultsFoundPageException:
         logging.info("Detected No Results Found Page. Refreshing and trying query again...")
+        self._driver.refresh()
+        self.scrape_current_query()
+        return
+      except PageFrozeException:
+        logging.warning("Pages seems to have froze. Refreshing and trying query again...")
         self._driver.refresh()
         self.scrape_current_query()
         return
