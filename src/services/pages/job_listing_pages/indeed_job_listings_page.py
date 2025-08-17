@@ -160,6 +160,8 @@ class IndeedJobListingsPage(JobListingsPage):
         job_listings_ul = toast_div.find_element(By.XPATH, "../ul")
         return job_listings_ul
       except NoSuchElementException as e:
+        if "/viewjob" in self._driver.current_url:
+          raise JobListingOpensInWindowException()
         last_error = e
         logging.warning("Failed to find job listings ul. Trying again...")
         time.sleep(0.1)

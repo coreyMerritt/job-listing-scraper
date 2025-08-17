@@ -1,12 +1,15 @@
+from datetime import timedelta
+import math
 from typing import List
 
+from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
 
 
 class IndeedQueryUrlBuilder:
   __ignore_terms: List[str]
   __location: str | None
-  __max_age_in_days: int
+  __max_age: timedelta
   __min_salary: int
   __max_distance_in_mis: int
   __remote: bool
@@ -16,10 +19,17 @@ class IndeedQueryUrlBuilder:
   __senior_level: bool
   __url: str
 
-  def __init__(self, universal_config: UniversalConfig):
+  def __init__(self, universal_config: UniversalConfig, quick_settings: QuickSettings):
     self.__ignore_terms = universal_config.search.terms.ignore
     self.__location = universal_config.search.location.city
-    self.__max_age_in_days = universal_config.search.misc.max_age_in_days
+    raw_max_age = quick_settings.bot_behavior.job_listing_criteria.max_age
+    self.__max_age = timedelta(
+      weeks=(raw_max_age.years * 52) + (raw_max_age.months * 4.345) + (raw_max_age.weeks),
+      days=raw_max_age.days,
+      hours=raw_max_age.hours,
+      minutes=raw_max_age.minutes,
+      seconds=raw_max_age.seconds
+    )
     if universal_config.search.salary.min:
       self.__min_salary = universal_config.search.salary.min
     else:
@@ -70,7 +80,9 @@ class IndeedQueryUrlBuilder:
       self.__url += "&l="
 
   def __add_max_age(self) -> None:
-    self.__url += f"&fromage={self.__max_age_in_days}"
+    # Indeed really sucks here -- it only allows days as the unit
+    days = math.ceil(self.__max_age.total_seconds() / 86400)
+    self.__url += f"&fromAge={days}"
 
   def __add_min_salary(self) -> None:
     self.__url += f"&salaryType=%24{self.__min_salary}%2B"

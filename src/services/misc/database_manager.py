@@ -13,6 +13,7 @@ from models.db.job_application_orm import JobApplicationORM
 from models.db.base import Base
 from models.db.job_listing_orm import JobListingORM
 from models.db.rate_limit_orm import RateLimitORM
+from models.db.system_record_orm import SystemRecordORM
 from models.enums.platform import Platform
 
 
@@ -23,7 +24,6 @@ class DatabaseManager:
   def __init__(self, database_config: DatabaseConfig):
     engine = database_config.engine
     username = database_config.username
-
     password = quote_plus(database_config.password)
     host = database_config.host
     port = database_config.port
@@ -142,12 +142,12 @@ class DatabaseManager:
 
   def log_rate_limit_block(self, ip_address: str, platform: Platform) -> None:
     logging.warning("Rate limited by %s on address: %s", platform.value, ip_address)
-    rate_limit = RateLimitORM(
+    rate_limit_orm = RateLimitORM(
       ip_address=ip_address,
       platform=platform.value
     )
     with self.get_session() as session:
-      session.add(rate_limit)
+      session.add(rate_limit_orm)
       session.commit()
 
   def get_rate_limit_time_delta(self, ip_address: str, platform: Platform | None = None) -> timedelta:
@@ -175,6 +175,36 @@ class DatabaseManager:
     now = datetime.now(timezone.utc)
     time_delta = now - last_logged_rate_limit_timestamp
     return time_delta
+
+  def log_system_record(
+    self,
+    address: str,
+    jobs_parsed: int,
+    platforms: str,
+    happy_exit: bool,
+    start_time: datetime,
+    end_time: datetime
+  ) -> None:
+    system_record_orm = SystemRecordORM(
+      address=address,
+      jobs_parsed=jobs_parsed,
+      platforms=platforms,
+      happy_exit=happy_exit,
+      start_time=start_time,
+      end_time=end_time
+    )
+    with self.get_session() as session:
+      session.add(system_record_orm)
+      session.commit()
+
+  def get_last_system_record(self) -> SystemRecordORM | None:
+    with self.get_session() as session:
+      last_system_record_orm = (
+        session.query(SystemRecordORM)
+          .order_by(desc(SystemRecordORM.start_time))
+          .first()
+      )
+    return last_system_record_orm
 
   def __build_job_listing_orm(self, job_listing: JobListing, platform: Platform) -> JobListingORM:
     job_listing_orm = JobListingORM(

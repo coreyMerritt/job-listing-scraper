@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from datetime import datetime
 from functools import partial
 import logging
 import sys
@@ -15,6 +16,7 @@ from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
 from services.misc.proxy_manager import ProxyManager
 from services.misc.selenium_helper import SeleniumHelper
+from services.misc.system_info_manager import SystemInfoManager
 from services.orchestration.glassdoor_orchestration_engine import GlassdoorOrchestrationEngine
 from services.orchestration.indeed_orchestration_engine import IndeedOrchestrationEngine
 from services.orchestration.linkedin_orchestration_engine import LinkedinOrchestrationEngine
@@ -71,6 +73,7 @@ def start() -> None:
     glassdoor_orchestration_engine,
     indeed_orchestration_engine,
     linkedin_orchestration_engine,
+    database_manager,
     proxy_manager
   )
 
@@ -95,16 +98,28 @@ def scrape(
   glassdoor_orchestration_engine: GlassdoorOrchestrationEngine,
   indeed_orchestration_engine: IndeedOrchestrationEngine,
   linkedin_orchestration_engine: LinkedinOrchestrationEngine,
+  database_manager: DatabaseManager,
   proxy_manager: ProxyManager
 ) -> None:
+  system_info_manager = SystemInfoManager()
+  address = system_info_manager.get_default_address()
+  platforms = str(config.quick_settings.bot_behavior.platform_order)
+  jobs_parsed = 0
+  start_time = datetime.now()
   for some_platform in config.quick_settings.bot_behavior.platform_order:
     platform = str(some_platform).lower()
     if platform == Platform.GLASSDOOR.value.lower():
       glassdoor_orchestration_engine.login()
+      jobs_parsed += glassdoor_orchestration_engine.get_jobs_parsed_count()
+      glassdoor_orchestration_engine.reset_jobs_parsed_count()
     elif platform == Platform.INDEED.value.lower():
       indeed_orchestration_engine.login()
+      jobs_parsed += glassdoor_orchestration_engine.get_jobs_parsed_count()
+      glassdoor_orchestration_engine.reset_jobs_parsed_count()
     elif platform == Platform.LINKEDIN.value.lower():
       linkedin_orchestration_engine.login()
+      jobs_parsed += glassdoor_orchestration_engine.get_jobs_parsed_count()
+      glassdoor_orchestration_engine.reset_jobs_parsed_count()
     try:
       if platform == Platform.GLASSDOOR.value.lower():
         glassdoor_orchestration_engine.scrape()
@@ -121,6 +136,7 @@ def scrape(
       traceback.print_exc()
       input("\tPress enter to exit...")
       sys.exit(1)
+  database_manager.log_system_record(address, jobs_parsed, platforms, True, start_time, datetime.now())
 
 def glassdoor(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: disable=unused-argument
   config.quick_settings.bot_behavior.platform_order = [Platform.GLASSDOOR.value]

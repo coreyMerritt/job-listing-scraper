@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import List
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
@@ -6,7 +7,7 @@ from models.configs.universal_config import UniversalConfig
 class LinkedinQueryUrlBuilder:
   __ignore_terms: List[str]
   __location: str | None
-  __max_age_in_days: int
+  __max_age: timedelta
   __remote: bool
   __hybrid: bool
   __entry_level: bool
@@ -22,7 +23,14 @@ class LinkedinQueryUrlBuilder:
   ):
     self.__ignore_terms = universal_config.search.terms.ignore
     self.__location = universal_config.search.location.city
-    self.__max_age_in_days = universal_config.search.misc.max_age_in_days
+    raw_max_age = quick_settings.bot_behavior.job_listing_criteria.max_age
+    self.__max_age = timedelta(
+      weeks=(raw_max_age.years * 52) + (raw_max_age.months * 4.345) + (raw_max_age.weeks),
+      days=raw_max_age.days,
+      hours=raw_max_age.hours,
+      minutes=raw_max_age.minutes,
+      seconds=raw_max_age.seconds
+    )
     self.__remote = universal_config.search.location.remote
     self.__hybrid = universal_config.search.location.hybrid
     self.__entry_level = universal_config.search.experience.entry
@@ -86,7 +94,7 @@ class LinkedinQueryUrlBuilder:
           self.__url += f",{i}"
 
   def __add_max_age(self) -> None:
-    self.__url += f"&f_TPR=r{self.__max_age_in_days * 86400}"
+    self.__url += f"&f_TPR=r{self.__max_age.total_seconds()}"
 
   def __add_easy_apply_only(self) -> None:
     self.__url += "&f_AL="

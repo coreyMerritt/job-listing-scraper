@@ -46,7 +46,6 @@ class SearchTerms:
 
 @dataclass
 class SearchMisc:
-  max_age_in_days: int = 7
   min_company_rating: float | None = None
 
 @dataclass

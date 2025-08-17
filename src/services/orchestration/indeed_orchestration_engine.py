@@ -34,7 +34,7 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
     language_parser: LanguageParser,
     proxy_manager: ProxyManager
   ):
-    super().__init__(driver, selenium_helper, universal_config)
+    super().__init__(driver, selenium_helper, universal_config, quick_settings)
     self.__indeed_home_page = IndeedHomePage(selenium_helper)
     self.__indeed_login_page = IndeedLoginPage(driver, selenium_helper, indeed_config)
     self.__indeed_one_time_code_page = IndeedOneTimeCodePage(driver, selenium_helper, indeed_config)
@@ -71,7 +71,7 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
       start_time = time.time()
       while time.time() - start_time < timeout:
         try:
-          query_builder = IndeedQueryUrlBuilder(self._universal_config)
+          query_builder = IndeedQueryUrlBuilder(self._universal_config, self._quick_settings)
           query_url = query_builder.build(search_term)
           self.__go_to_query_url(query_url)
           self.__indeed_job_listings_page.scrape_current_query()
@@ -79,6 +79,12 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
         except TimeoutError:
           logging.warning("Timed out waiting for query url. Trying again...")
           time.sleep(0.1)
+
+  def get_jobs_parsed_count(self) -> int:
+    return self.__indeed_job_listings_page.get_jobs_parsed_count()
+
+  def reset_jobs_parsed_count(self) -> None:
+    self.__indeed_job_listings_page.reset_jobs_parsed_count()
 
   def __go_to_query_url(self, url: str) -> None:
     logging.info("Going to query url: %s...", url)

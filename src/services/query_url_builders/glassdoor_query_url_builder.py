@@ -1,3 +1,5 @@
+from datetime import timedelta
+import math
 from urllib.parse import quote
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
@@ -8,7 +10,7 @@ class GlassdoorQueryUrlBuilder:
   __location: str
   __remote: bool
   __min_company_rating: float
-  __max_age_in_days: int
+  __max_age: timedelta
   __min_salary: int
   __max_salary: int
   __url: str
@@ -25,7 +27,14 @@ class GlassdoorQueryUrlBuilder:
       self.__min_company_rating = universal_config.search.misc.min_company_rating
     else:
       self.__min_company_rating = 0
-    self.__max_age_in_days = universal_config.search.misc.max_age_in_days
+    raw_max_age = quick_settings.bot_behavior.job_listing_criteria.max_age
+    self.__max_age = timedelta(
+      weeks=(raw_max_age.years * 52) + (raw_max_age.months * 4.345) + (raw_max_age.weeks),
+      days=raw_max_age.days,
+      hours=raw_max_age.hours,
+      minutes=raw_max_age.minutes,
+      seconds=raw_max_age.seconds
+    )
     if universal_config.search.salary.min:
       self.__min_salary = universal_config.search.salary.min
     else:
@@ -67,7 +76,7 @@ class GlassdoorQueryUrlBuilder:
     self.__url += (
       f"-{encoded_term}-jobs-SRCH_IL.{location_start},{location_end}"
       f"_IN1_KO{term_start},{term_end}.htm?"
-    ) 
+    )
 
   def __add_remote(self) -> None:
     if self.__remote:
@@ -80,7 +89,9 @@ class GlassdoorQueryUrlBuilder:
     self.__url += f"&minRating={self.__min_company_rating}"
 
   def __add_max_age(self) -> None:
-    self.__url += f"&fromAge={self.__max_age_in_days}"
+    # Glassdoor really sucks here -- it only allows days as the unit
+    days = math.ceil(self.__max_age.total_seconds() / 86400)
+    self.__url += f"&fromAge={days}"
 
   def __add_min_salary(self) -> None:
     self.__url += f"&minSalary={self.__min_salary}"

@@ -36,6 +36,7 @@ class JobListingsPage(ABC):
   _quick_settings: QuickSettings
   _universal_config: UniversalConfig
   _current_session_jobs: Set[str]
+  _jobs_parsed_count: int
 
   def __init__(
     self,
@@ -56,6 +57,13 @@ class JobListingsPage(ABC):
     self._quick_settings = quick_settings
     self._universal_config = universal_config
     self._current_session_jobs = set()
+    self._jobs_parsed_count = 0
+
+  def get_jobs_parsed_count(self) -> int:
+    return self._jobs_parsed_count
+
+  def reset_jobs_parsed_count(self) -> None:
+    self._jobs_parsed_count = 0
 
   def scrape_current_query(self) -> None:
     zero_results_count = 0
@@ -65,7 +73,10 @@ class JobListingsPage(ABC):
         logging.info("0 results. Skipping query...")
         return
       else:
-        self._driver.refresh()
+        try:
+          self._driver.refresh()
+        except TimeoutException:
+          pass
     total_jobs_tried = 0
     job_listing_li_index = 0
     while True:
@@ -101,6 +112,7 @@ class JobListingsPage(ABC):
           continue
         logging.info("Adding Brief Job Listing to Current Session Jobs...")
         self._current_session_jobs.add(brief_job_listing.to_minimal_str())
+        self._jobs_parsed_count += 1
         if not self._criteria_checker.passes(self._quick_settings, self._universal_config, brief_job_listing):
           logging.info("Ignoring Brief Job Listing because it does not meet ignore/ideal criteria.")
           continue

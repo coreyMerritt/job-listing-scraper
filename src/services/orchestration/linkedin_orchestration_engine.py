@@ -8,6 +8,7 @@ from models.configs.universal_config import UniversalConfig
 from services.misc.database_manager import DatabaseManager
 from services.misc.proxy_manager import ProxyManager
 from services.misc.selenium_helper import SeleniumHelper
+from services.orchestration.abc_orchestration_engine import OrchestrationEngine
 from services.pages.job_listing_pages.linkedin_job_listings_page_1 import LinkedinJobListingsPage1
 from services.pages.job_listing_pages.linkedin_job_listings_page_2 import LinkedinJobListingsPage2
 from services.pages.linkedin_login_page import LinkedinLoginPage
@@ -15,10 +16,7 @@ from services.query_url_builders.linkedin_query_url_builder import LinkedinQuery
 from services.misc.language_parser import LanguageParser
 
 
-class LinkedinOrchestrationEngine:
-  __driver: uc.Chrome
-  __universal_config: UniversalConfig
-  __quick_settings: QuickSettings
+class LinkedinOrchestrationEngine(OrchestrationEngine):
   __linkedin_login_page: LinkedinLoginPage
   __linkedin_job_listings_page_1: LinkedinJobListingsPage1
   __linkedin_job_listings_page_2: LinkedinJobListingsPage2
@@ -34,9 +32,7 @@ class LinkedinOrchestrationEngine:
     linkedin_config: LinkedinConfig,
     proxy_manager: ProxyManager
   ):
-    self.__driver = driver
-    self.__universal_config = universal_config
-    self.__quick_settings = quick_settings
+    super().__init__(driver, selenium_helper, universal_config, quick_settings)
     self.__linkedin_login_page = LinkedinLoginPage(
       driver,
       selenium_helper,
@@ -66,7 +62,7 @@ class LinkedinOrchestrationEngine:
     self.__linkedin_login_page.login()
 
   def scrape(self) -> None:
-    query_terms = self.__universal_config.search.terms.match
+    query_terms = self._universal_config.search.terms.match
     if not query_terms or len(query_terms) == 0:
       query_terms = [""]
     for search_term in query_terms:
@@ -78,11 +74,22 @@ class LinkedinOrchestrationEngine:
       else:
         raise UnknownPageException()
 
+  def get_jobs_parsed_count(self) -> int:
+    jobs_parsed_count = max(
+      self.__linkedin_job_listings_page_1.get_jobs_parsed_count(),
+      self.__linkedin_job_listings_page_2.get_jobs_parsed_count()
+    )
+    return jobs_parsed_count
+
+  def reset_jobs_parsed_count(self) -> None:
+    self.__linkedin_job_listings_page_1.reset_jobs_parsed_count()
+    self.__linkedin_job_listings_page_2.reset_jobs_parsed_count()
+
   def __go_to_query(self, search_term: str) -> None:
-    query_url_builder = LinkedinQueryUrlBuilder(self.__universal_config, self.__quick_settings)
+    query_url_builder = LinkedinQueryUrlBuilder(self._universal_config, self._quick_settings)
     query_url = query_url_builder.build(search_term)
     logging.debug("Going to %s", query_url)
-    self.__driver.get(query_url)
-    while not "linkedin.com/jobs/search" in self.__driver.current_url:
+    self._driver.get(query_url)
+    while not "linkedin.com/jobs/search" in self._driver.current_url:
       logging.debug("Waiting for url to include: linkedin.com/jobs/search...")
       time.sleep(0.5)
