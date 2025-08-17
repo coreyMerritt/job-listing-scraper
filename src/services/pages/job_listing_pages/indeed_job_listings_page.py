@@ -148,7 +148,7 @@ class IndeedJobListingsPage(JobListingsPage):
     try:
       next_page_anchor.click()
     except TimeoutException:
-      logging.warning("Received a TimeoutException that has historically shown to not be an issue. Continuing...")
+      logging.warning("Received a TimeoutException that has historgit sically shown to not be an issue. Continuing...")
 
   def _get_job_listings_ul(self, timeout=5.0) -> WebElement:
     last_error = None
@@ -161,7 +161,7 @@ class IndeedJobListingsPage(JobListingsPage):
         return job_listings_ul
       except NoSuchElementException as e:
         if "/viewjob" in self._driver.current_url:
-          raise JobListingOpensInWindowException()
+          raise JobListingOpensInWindowException() from e
         last_error = e
         logging.warning("Failed to find job listings ul. Trying again...")
         time.sleep(0.1)
