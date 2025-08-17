@@ -53,6 +53,9 @@ class IndeedOneTimeCodePage:
         )
         send_new_code_span.click()
         time.sleep(1)
+      except AssertionError:
+        logging.warning("Failed to get one time code. Trying again...")
+        time.sleep(0.1)
     self.__wait_for_one_time_code_label()
     self.__enter_one_time_code(code)
 

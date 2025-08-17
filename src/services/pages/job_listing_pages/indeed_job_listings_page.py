@@ -151,25 +151,21 @@ class IndeedJobListingsPage(JobListingsPage):
       logging.warning("Received a TimeoutException that has historically shown to not be an issue. Continuing...")
 
   def _get_job_listings_ul(self, timeout=5.0) -> WebElement:
-    potential_job_listings_ul_xpaths = [
-      "/html/body/main/div/div[2]/div/div[5]/div/div[1]/div[4]/div/ul",
-      "/html/body/main/div/div/div[2]/div/div[5]/div/div[1]/div[4]/div/div/ul"
-    ]
-    for xpath in potential_job_listings_ul_xpaths:
+    last_error = None
+    start_time = time.time()
+    while time.time() - start_time < timeout:
       try:
-        job_listings_ul = self._driver.find_element(By.XPATH, xpath)
+        toast_div_id = "toast"
+        toast_div = self._driver.find_element(By.ID, toast_div_id)
+        job_listings_ul = toast_div.find_element(By.XPATH, "../ul")
         return job_listings_ul
       except NoSuchElementException as e:
-        if "indeed.com/viewjob" in self._driver.current_url:
-          raise JobListingOpensInWindowException() from e
-    if "indeed.com/viewjob" in self._driver.current_url:
-      raise JobListingOpensInWindowException()
-    if not self.__is_additional_verification_required_page():
-      raise NoSuchElementException("Failed to find Job Listings ul.")
-    while self.__is_additional_verification_required_page():
-      logging.debug("Waiting for user to handle security checkpoint...")
-      time.sleep(1)
-    return self._get_job_listings_ul()
+        last_error = e
+        logging.warning("Failed to find job listings ul. Trying again...")
+        time.sleep(0.1)
+    if last_error:
+      raise last_error
+    raise RuntimeError("Unknown error occured while trying to get job listings ul.")
 
   def __get_current_page_number(self) -> int:
     page_buttons_ul = self.__get_page_buttons_ul()

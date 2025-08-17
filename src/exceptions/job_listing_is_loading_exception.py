@@ -1,2 +1,2 @@
-class JobListingIsAdvertisementException(Exception):
+class JobListingIsLoadingException(Exception):
   pass
