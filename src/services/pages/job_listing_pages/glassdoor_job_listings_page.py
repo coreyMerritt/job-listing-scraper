@@ -159,7 +159,6 @@ class GlassdoorJobListingsPage(JobListingsPage):
     return self._is_next_page()
 
   def _is_next_page(self) -> bool:
-    self._selenium_helper.scroll_to_bottom()
     try:
       job_listings_ul = self._get_job_listings_ul()
       job_listings_ul.find_element(By.XPATH, "../div/div/button")

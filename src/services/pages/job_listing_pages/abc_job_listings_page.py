@@ -122,14 +122,11 @@ class JobListingsPage(ABC):
             logging.info("Building Job Listing...")
             job_listing = self._build_job_listing(job_listing_li, job_details_div)
             break
-          except JobDetailsDidntLoadException:
+          except JobDetailsDidntLoadException as e:
             if self._quick_settings.bot_behavior.fallback_to_brief_on_load_issues:
-              logging.warning("Job Details failed to load. Submitting Brief Job Listing instead...")
               logging.info("Adding Brief Job Listing to database...")
               self._add_job_listing_to_db(brief_job_listing)
-            else:
-              logging.warning("Job Details failed to load. Skipping...")
-            continue
+            raise e
           except AssertionError:
             logging.warning("Failed to create job listing. Trying again...")
             time.sleep(0.1)
