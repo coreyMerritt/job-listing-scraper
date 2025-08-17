@@ -35,21 +35,32 @@ class DatabaseManager:
   def get_session(self) -> Session:
     return self.__session_factory()
 
-  def is_job_listing(
+  def job_listing_is_in_db(
     self,
     job_listing: JobListing,
     platform: Platform
   ) -> bool:
-    job_listing_orm = self.__build_job_listing_orm(job_listing, platform)
+    job_listing_post_time = job_listing.get_post_time()
+    if job_listing_post_time:
+      estimated_post_time = job_listing_post_time
+    else:
+      estimated_post_time = datetime.now(timezone.utc)
     with self.get_session() as session:
-      job_listing_entry = session.query(JobListingORM).filter_by(
-        job_title=job_listing_orm.job_title,
-        company=job_listing_orm.company,
-        location=job_listing_orm.location,
+      job_listing_entries: List[JobListingORM] = session.query(JobListingORM).filter_by(
+        job_title=job_listing.get_title(),
+        company=job_listing.get_company(),
+        location=job_listing.get_location(),
         platform=platform.value,
-      ).first()
-    if job_listing_entry:
-      return True
+      ).all()
+    for db_job_listing in job_listing_entries:
+      if db_job_listing.post_time:
+        db_estimated_post_time = db_job_listing.post_time
+      else:
+        db_estimated_post_time = db_job_listing.timestamp
+      time_diff = estimated_post_time - db_estimated_post_time
+      assert isinstance(time_diff, timedelta)
+      if time_diff.total_seconds() > -86400 and time_diff.total_seconds() < 86400:
+        return True
     return False
 
   def create_new_job_listing(
@@ -57,6 +68,8 @@ class DatabaseManager:
     job_listing: JobListing,
     platform: Platform
   ) -> None:
+    if self.job_listing_is_in_db(job_listing, platform):
+      return
     job_listing_orm = self.__build_job_listing_orm(job_listing, platform)
     with self.get_session() as session:
       job_listing_entry = session.query(JobListingORM).filter_by(

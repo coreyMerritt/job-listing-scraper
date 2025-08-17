@@ -113,7 +113,7 @@ class JobListingsPage(ABC):
           continue
         logging.info("Adding Brief Job Listing to Current Session Jobs...")
         self._current_session_jobs.add(brief_job_listing.to_minimal_str())
-        if self._database_manager.is_job_listing(brief_job_listing, self._get_platform()):
+        if self._database_manager.job_listing_is_in_db(brief_job_listing, self._get_platform()):
           logging.info("Ignoring Brief Job Listing because its already in the database. Skipping...")
           continue
         self._jobs_parsed_count += 1
