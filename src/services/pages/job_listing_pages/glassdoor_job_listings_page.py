@@ -83,6 +83,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
     raise NoMoreJobListingsException()
 
   def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=10.0) -> GlassdoorJobListing:
+    last_error = None
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:
@@ -92,9 +93,16 @@ class GlassdoorJobListingsPage(JobListingsPage):
           job_listing_li
         )
         return brief_job_listing
-      except TimeoutError:
+      except NoSuchElementException as e:
+        last_error = e
+        logging.warning("NoSuchElementException while trying to build job listing. Trying again...")
+        time.sleep(0.1)
+      except TimeoutError as e:
+        last_error = e
         logging.warning("TimeoutError while trying to build job listing. Trying again...")
         time.sleep(0.1)
+    if last_error:
+      raise last_error
     raise TimeoutException("Timed out trying to build job listing.")
 
   def _build_job_listing(
