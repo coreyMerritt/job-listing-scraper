@@ -48,11 +48,11 @@ universal:
       match: []
         # - "Python"
         # - "SQL"
-      # These ignore terms will be fed directly into job listing search queries and can have dramatic affects.
-      # If unsure, use the universal.bot_behavior.ignore section instead.
+      # Only single words are safe in this list -- if you have a phrase or multi-word company, use
+      # universal.bot_behavior.ignore instead
       ignore: []
-        # - "Customer Service"
-        # - "COBOL"
+        # - "DataAnnotation"
+        # - "Jobright.ai"
     misc:
       # Some sites consider "1 day" to be UTC 00:00 to present. Recommend 2 or higher for this
       max_age_in_days: 0  # Can not be null, must be int -- ex) 2
