@@ -127,9 +127,6 @@ class JobListingsPage(ABC):
               logging.info("Adding Brief Job Listing to database...")
               self._add_job_listing_to_db(brief_job_listing)
             raise e
-          except AssertionError:
-            logging.warning("Failed to create job listing. Trying again...")
-            time.sleep(0.1)
           except StaleElementReferenceException:
             logging.warning("Stale element while trying to create job listing. Trying again...")
             time.sleep(0.1)

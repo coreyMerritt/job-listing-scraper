@@ -1,3 +1,4 @@
+import logging
 import time
 import re
 from datetime import datetime, timedelta, timezone
@@ -91,7 +92,13 @@ class LinkedinJobListing2(JobListing):
       assert job_details_html
       full_text_match_regex = r"([0-9]+) (.+) ago"
       full_text_match = re.search(full_text_match_regex, job_details_html)
-      assert full_text_match
+      if not full_text_match:
+        logging.warning("No post time available...")
+        # This is very rare, so this ensures that if we're triggering an unknown
+        # error repeatedly, we'll notice because the system will slow dramatically
+        time.sleep(3)
+        self.set_post_time(None)
+        return
       amount, unit = full_text_match.groups()
       if "minute" in unit:
         minutes = float(amount)

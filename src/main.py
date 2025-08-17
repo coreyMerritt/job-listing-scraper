@@ -3,6 +3,7 @@
 import argparse
 from functools import partial
 import logging
+import sys
 import time
 import traceback
 import yaml
@@ -104,22 +105,22 @@ def scrape(
       indeed_orchestration_engine.login()
     elif platform == Platform.LINKEDIN.value.lower():
       linkedin_orchestration_engine.login()
-    while True:
-      try:
-        if platform == Platform.GLASSDOOR.value.lower():
-          glassdoor_orchestration_engine.scrape()
-        elif platform == Platform.INDEED.value.lower():
-          indeed_orchestration_engine.scrape()
-        elif platform == Platform.LINKEDIN.value.lower():
-          linkedin_orchestration_engine.scrape()
-      except MemoryOverloadException as e:
-        raise e
-      except RateLimitedException as e:
-        proxy_manager.log_rate_limit_block(e.get_platform())
-        raise e
-      except Exception:
-        traceback.print_exc()
-        input("\tPress enter to exit...")
+    try:
+      if platform == Platform.GLASSDOOR.value.lower():
+        glassdoor_orchestration_engine.scrape()
+      elif platform == Platform.INDEED.value.lower():
+        indeed_orchestration_engine.scrape()
+      elif platform == Platform.LINKEDIN.value.lower():
+        linkedin_orchestration_engine.scrape()
+    except MemoryOverloadException as e:
+      raise e
+    except RateLimitedException as e:
+      proxy_manager.log_rate_limit_block(e.get_platform())
+      raise e
+    except Exception:
+      traceback.print_exc()
+      input("\tPress enter to exit...")
+      sys.exit(1)
 
 def glassdoor(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: disable=unused-argument
   config.quick_settings.bot_behavior.platform_order = [Platform.GLASSDOOR.value]
