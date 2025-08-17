@@ -29,6 +29,9 @@ from services.pages.job_listing_pages.abc_job_listings_page import JobListingsPa
 
 
 class GlassdoorJobListingsPage(JobListingsPage):
+  def _get_platform(self) -> Platform:
+    return Platform.GLASSDOOR
+
   def _is_zero_results(self, timeout=10.0) -> bool:
     search_results_class = "SearchResultsHeader_jobCount__eHngv"
     start_time = time.time()

@@ -35,6 +35,23 @@ class DatabaseManager:
   def get_session(self) -> Session:
     return self.__session_factory()
 
+  def is_job_listing(
+    self,
+    job_listing: JobListing,
+    platform: Platform
+  ) -> bool:
+    job_listing_orm = self.__build_job_listing_orm(job_listing, platform)
+    with self.get_session() as session:
+      job_listing_entry = session.query(JobListingORM).filter_by(
+        job_title=job_listing_orm.job_title,
+        company=job_listing_orm.company,
+        location=job_listing_orm.location,
+        platform=platform.value,
+      ).first()
+    if job_listing_entry:
+      return True
+    return False
+
   def create_new_job_listing(
     self,
     job_listing: JobListing,
@@ -66,55 +83,6 @@ class DatabaseManager:
         session.commit()
       else:
         session.add(job_listing_orm)
-        session.commit()
-
-  def create_new_application(
-    self,
-    job_application: JobApplication,
-    platform: Platform
-  ) -> None:
-    job_listing = job_application.get_job_listing()
-    with self.get_session() as session:
-      job_listing_orm = session.query(JobListingORM).filter_by(
-        job_title=job_listing.get_title(),
-        company=job_listing.get_company(),
-        location=job_listing.get_location(),
-        platform=platform.value
-      ).first()
-      if not job_listing_orm:
-        job_listing_orm = self.__build_job_listing_orm(job_listing, platform)
-        session.add(job_listing_orm)
-        session.flush()
-      first_name = job_application.get_first_name()
-      last_name = job_application.get_last_name()
-      applied = job_application.applied()
-      ignore_type = job_application.get_ignore_type()
-      if ignore_type is not None:
-        ignore_type = ignore_type.value
-      ignore_category = job_application.get_ignore_category()
-      if ignore_category is not None:
-        ignore_category = ignore_category.value
-      ignore_term = job_application.get_ignore_term()
-      application_entry = session.query(JobApplicationORM).filter_by(
-        first_name=first_name,
-        last_name=last_name,
-        applied=applied,
-        ignore_type=ignore_type,
-        ignore_category=ignore_category,
-        ignore_term=ignore_term,
-        job_listing_id=job_listing_orm.id
-      ).first()
-      if not application_entry:
-        job_application_orm = JobApplicationORM(
-          first_name=first_name,
-          last_name=last_name,
-          applied=applied,
-          ignore_type=ignore_type,
-          ignore_category=ignore_category,
-          ignore_term=ignore_term,
-          job_listing=job_listing_orm
-        )
-        session.add(job_application_orm)
         session.commit()
 
   def get_highest_job_listing_ignore_keywords(self, limit=10) -> List[Tuple[str, str, str, int]]:

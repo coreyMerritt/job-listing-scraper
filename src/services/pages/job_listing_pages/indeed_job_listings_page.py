@@ -28,6 +28,9 @@ class IndeedJobListingsPage(JobListingsPage):
     except NoSuchElementException:
       return False
 
+  def _get_platform(self) -> Platform:
+    return Platform.INDEED
+
   def _is_zero_results(self, timeout=10.0) -> bool:
     return False  # TODO
 

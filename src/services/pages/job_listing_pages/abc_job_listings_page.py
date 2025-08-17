@@ -19,6 +19,7 @@ from exceptions.page_froze_exception import PageFrozeException
 from exceptions.something_went_wrong_page_exception import SomethingWentWrongPageException
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
+from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
 from services.misc.job_criteria_checker import JobCriteriaChecker
 from services.misc.proxy_manager import ProxyManager
@@ -112,6 +113,9 @@ class JobListingsPage(ABC):
           continue
         logging.info("Adding Brief Job Listing to Current Session Jobs...")
         self._current_session_jobs.add(brief_job_listing.to_minimal_str())
+        if self._database_manager.is_job_listing(brief_job_listing, self._get_platform()):
+          logging.info("Ignoring Brief Job Listing because its already in the database. Skipping...")
+          continue
         self._jobs_parsed_count += 1
         if not self._criteria_checker.passes(self._quick_settings, self._universal_config, brief_job_listing):
           logging.info("Ignoring Brief Job Listing because it does not meet ignore/ideal criteria.")
@@ -207,6 +211,10 @@ class JobListingsPage(ABC):
     logging.debug("Current memory usage: %s%s", current_memory_usage, "%")
     if current_memory_usage > 90:
       raise MemoryOverloadException()
+
+  @abstractmethod
+  def _get_platform(self) -> Platform:
+    pass
 
   @abstractmethod
   def _is_zero_results(self, timeout=10.0) -> bool:

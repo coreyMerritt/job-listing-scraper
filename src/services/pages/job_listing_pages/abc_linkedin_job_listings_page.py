@@ -46,6 +46,9 @@ class LinkedinJobListingsPage(JobListingsPage):
   def _job_listing_li_is_active(self, job_listing_li: WebElement) -> bool:
     pass
 
+  def _get_platform(self) -> Platform:
+    return Platform.LINKEDIN
+
   def _handle_incrementors(self, total_jobs_tried: int, job_listing_li_index: int) -> Tuple[int, int]:
     total_jobs_tried += 1
     if total_jobs_tried >= 4:
