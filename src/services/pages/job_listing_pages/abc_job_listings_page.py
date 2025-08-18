@@ -179,7 +179,9 @@ class JobListingsPage(ABC):
           self._driver.switch_to.window(self._driver.window_handles[-1])
           self._driver.close()
           self._driver.switch_to.window(self._driver.window_handles[0])
-        self._driver.refresh()
+        else:
+          self._driver.back()
+          self._driver.refresh()
         self.scrape_current_query()
         return
       except MemoryOverloadException:

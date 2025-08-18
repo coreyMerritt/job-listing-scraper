@@ -12,22 +12,9 @@ class IndeedHomePage:
     self.__selenium_helper = selenium_helper
 
   def navigate_to_login_page(self) -> None:
-    self.__wait_for_security_checkpoint()
     self.__wait_for_sign_in_anchor()
     self.__click_sign_in_anchor()
     self.__wait_for_vague_email_address_label()
-
-  def __wait_for_security_checkpoint(self, timeout=86400.0) -> None:
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-      if self.__selenium_helper.exact_text_is_present(
-        "Additional Verification Required",
-        ElementType.H1
-      ):
-        logging.debug("Waiting for user to resolve security checkpoint...")
-        time.sleep(0.5)
-      else:
-        return
 
   def __wait_for_sign_in_anchor(self, timeout=3.0) -> None:
     start_time = time.time()

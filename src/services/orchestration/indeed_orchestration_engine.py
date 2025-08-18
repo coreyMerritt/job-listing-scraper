@@ -5,6 +5,7 @@ from selenium.common.exceptions import TimeoutException
 from models.configs.indeed_config import IndeedConfig
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
+from models.enums.element_type import ElementType
 from services.misc.database_manager import DatabaseManager
 from services.misc.language_parser import LanguageParser
 from services.misc.proxy_manager import ProxyManager
@@ -52,7 +53,9 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
     logging.info("Logging into Indeed...")
     home_url = "https://www.indeed.com"
     self._driver.get(home_url)
-    self.__indeed_home_page.navigate_to_login_page()
+    self.__wait_for_security_checkpoint()
+    if not "secure.indeed.com/auth" in self._driver.current_url:
+      self.__indeed_home_page.navigate_to_login_page()
     self.__indeed_login_page.login()
     while not self.__indeed_one_time_code_page.is_present():
       logging.debug("Waiting for one-time-code page to appear...")
@@ -62,7 +65,6 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
       time.sleep(1)
       self.__indeed_one_time_code_page.resolve_with_mail_dot_com()
     self.__indeed_one_time_code_page.wait_for_captcha_resolution()
-
 
   def scrape(self) -> None:
     search_terms = self._universal_config.search.terms.match
@@ -92,3 +94,15 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
       self._driver.get(url)
     except TimeoutException:
       pass
+
+  def __wait_for_security_checkpoint(self, timeout=86400.0) -> None:
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+      if self._selenium_helper.exact_text_is_present(
+        "Additional Verification Required",
+        ElementType.H1
+      ):
+        logging.debug("Waiting for user to resolve security checkpoint...")
+        time.sleep(0.5)
+      else:
+        return
