@@ -37,7 +37,7 @@ class LinkedinJobListing2(JobListing):
     pass
 
   def _init_title(self) -> None:
-    title_anchor_selector = ".disabled.ember-view.job-card-container__link.OzlfXcDyufshDyxcxHnzuayNiPLsbOSuFdfcs.job-card-list__title--link"    # pylint: disable=line-too-long
+    title_anchor_selector = ".disabled.ember-view.job-card-container__link.UBPTBuIxmfjtoDVYyeVDGuNHYlmQndcRg.job-card-list__title--link"    # pylint: disable=line-too-long
     title_anchor = self._get_job_listing_li().find_element(By.CSS_SELECTOR, title_anchor_selector)
     raw_title = title_anchor.get_attribute("aria-label")
     if raw_title:
@@ -47,7 +47,7 @@ class LinkedinJobListing2(JobListing):
     raise NoSuchElementException("Failed to find a proper title anchor.")
 
   def _init_company(self) -> None:
-    company_span_class = "nZRzizuJPSzSZDGSlDorCIpYNKxkEYXVs"
+    company_span_class = "ZJMBSaLRYmOXxgPkEPmHGeiJXycjyVeBfAos "
     company_span = self._get_job_listing_li().find_element(By.CLASS_NAME, company_span_class)
     self.set_company(company_span.text.strip())
 
@@ -57,7 +57,7 @@ class LinkedinJobListing2(JobListing):
     self.set_location(location_span.text)
 
   def _init_url(self) -> None:
-    title_anchor_selector = ".disabled.ember-view.job-card-container__link.OzlfXcDyufshDyxcxHnzuayNiPLsbOSuFdfcs.job-card-list__title--link"    # pylint: disable=line-too-long
+    title_anchor_selector = ".disabled.ember-view.job-card-container__link.UBPTBuIxmfjtoDVYyeVDGuNHYlmQndcRg.job-card-list__title--link"    # pylint: disable=line-too-long
     url_anchor = self._get_job_listing_li().find_element(By.CSS_SELECTOR, title_anchor_selector)
     href = url_anchor.get_attribute("href")
     assert href

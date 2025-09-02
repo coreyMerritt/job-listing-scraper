@@ -1,6 +1,8 @@
 import logging
 import re
 import time
+import traceback
+from urllib3.exceptions import ReadTimeoutError
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import (
@@ -54,7 +56,7 @@ class LinkedinJobListingsPage2(LinkedinJobListingsPage):
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:
-        job_listings_ul_class = "EIBJhHUoVSorgyXUsQxzcVWEyDnMiJeHpPihjQ"
+        job_listings_ul_class = "JgDGmxDQlllVdeQJFAWXJkmiCLaJtqYSAfvDs"
         job_listings_ul = self._driver.find_element(By.CLASS_NAME, job_listings_ul_class)
         return job_listings_ul
       except NoSuchElementException:
@@ -76,6 +78,8 @@ class LinkedinJobListingsPage2(LinkedinJobListingsPage):
         )
         return job_listing
       except NoSuchElementException:
+        traceback.print_exc()
+        input("...")
         logging.warning("NoSuchElementException while trying to build brief job listing. Trying again...")
         time.sleep(0.1)
     raise NoSuchElementException("Failed to find full job details div.")
@@ -106,11 +110,15 @@ class LinkedinJobListingsPage2(LinkedinJobListingsPage):
     raise NoSuchElementException("Failed to find full job details div.")
 
   def _job_listing_li_is_active(self, job_listing_li: WebElement) -> bool:
-    activity_div = job_listing_li.find_element(By.XPATH, "./div/div")
-    active_class = "active"
-    current_classes = activity_div.get_attribute("class")
-    assert current_classes
-    return active_class in current_classes
+    try:
+      activity_div = job_listing_li.find_element(By.XPATH, "./div/div")
+      active_class = "active"
+      current_classes = activity_div.get_attribute("class")
+      assert current_classes
+      return active_class in current_classes
+    except ReadTimeoutError:
+      # TODO: Still testing this
+      return False
 
   def __get_job_header_div(self) -> WebElement:
     job_header_selector = ".relative.job-details-jobs-unified-top-card__container--two-pane"
