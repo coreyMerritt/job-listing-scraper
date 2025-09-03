@@ -1,7 +1,7 @@
 import logging
 import time
 import undetected_chromedriver as uc
-from selenium.common.exceptions import TimeoutException
+from exceptions.not_logged_in_exception import NotLoggedInException
 from models.configs.indeed_config import IndeedConfig
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
@@ -73,7 +73,14 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
     self._job_listings_page.reset_jobs_parsed_count()
 
   def _wait_for_query_url_resolution(self, query_url: str) -> None:
-    input("Implement me 4765")
+    while True:
+      if "secure.indeed.com/auth" in self._driver.current_url:
+        raise NotLoggedInException()
+      if "indeed.com/jobs?" in self._driver.current_url:
+        if self._job_listings_page.is_present():
+          return
+      time.sleep(0.5)
+      logging.info("Waiting for query url resolution...")
 
   def _is_security_checkpoint(self) -> bool:
     if self._selenium_helper.exact_text_is_present(

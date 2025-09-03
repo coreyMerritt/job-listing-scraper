@@ -215,6 +215,10 @@ class JobListingsPage(ABC):
       raise MemoryOverloadException()
 
   @abstractmethod
+  def is_present(self) -> bool:
+    pass
+
+  @abstractmethod
   def _get_platform(self) -> Platform:
     pass
 

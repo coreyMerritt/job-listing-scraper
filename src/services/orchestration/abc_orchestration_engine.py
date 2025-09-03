@@ -3,6 +3,7 @@ import logging
 import time
 import undetected_chromedriver as uc
 from selenium.common.exceptions import JavascriptException, TimeoutException
+from exceptions.not_logged_in_exception import NotLoggedInException
 from exceptions.service_is_down_exception import ServiceIsDownException
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
@@ -53,6 +54,8 @@ class OrchestrationEngine(ABC):
             except TimeoutError:
               logging.warning("Timed out waiting for query url. Trying again...")
               time.sleep(0.1)
+            except NotLoggedInException:
+              self.login()
             except ServiceIsDownException:
               logging.error("Glassdoor service appears to be down. Skipping all Glassdoor queries...")
               return

@@ -261,3 +261,4 @@ class IndeedJobListingsPage(JobListingsPage):
       ElementType.BUTTON,
       tos_update_window
     )
+    accept_terms_button.click()
