@@ -29,6 +29,10 @@ from services.pages.job_listing_pages.abc_job_listings_page import JobListingsPa
 
 
 class GlassdoorJobListingsPage(JobListingsPage):
+  def is_present(self) -> bool:
+    input("Implment me 7274")
+    return True
+
   def _get_platform(self) -> Platform:
     return Platform.GLASSDOOR
 
@@ -177,7 +181,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
     except NoSuchElementException:
       return False
 
-  def _go_to_next_page(self, timeout=15.0) -> None:
+  def _go_to_next_page(self, timeout=15.0) -> None:   # pylint: disable=unused-argument
     while self._is_next_page():
       try:
         no_jobs_regex = r"^0 .+ Jobs in .+"
