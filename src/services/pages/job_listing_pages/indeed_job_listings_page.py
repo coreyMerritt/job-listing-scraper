@@ -4,6 +4,7 @@ from typing import List, Tuple
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.common.exceptions import (
+  ElementClickInterceptedException,
   NoSuchElementException,
   StaleElementReferenceException,
   TimeoutException
@@ -92,7 +93,14 @@ class IndeedJobListingsPage(JobListingsPage):
     WebDriverWait(self._driver, timeout).until(
       EC.element_to_be_clickable(job_listing_li)
     )
-    job_listing_li.click()
+    try:
+      job_listing_li.click()
+    except ElementClickInterceptedException as e:
+      if self.__is_tos_update_window():
+        self.__accept_tos_update()
+        job_listing_li.click()
+      else:
+        raise e
 
   def _get_job_details_div(self, timeout=30.0) -> WebElement:
     job_details_div_id = "jobDescriptionText"
@@ -234,4 +242,22 @@ class IndeedJobListingsPage(JobListingsPage):
     return self._selenium_helper.exact_text_is_present(
       "Additional Verification Required",
       ElementType.H1
+    )
+
+  def __is_tos_update_window(self) -> bool:
+    tos_update_window_id = ":r0:"
+    try:
+      self._driver.find_element(By.ID, tos_update_window_id)
+      return True
+    except NoSuchElementException:
+      return False
+
+  def __accept_tos_update(self) -> None:
+    assert self.__is_tos_update_window()
+    tos_update_window_id = ":r0:"
+    tos_update_window = self._driver.find_element(By.ID, tos_update_window_id)
+    accept_terms_button = self._selenium_helper.get_element_by_exact_text(
+      "Accept Terms",
+      ElementType.BUTTON,
+      tos_update_window
     )
