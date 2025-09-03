@@ -3,13 +3,14 @@ from dataclasses import dataclass, field
 
 @dataclass
 class MaxAge:
-  years: float = 0
-  months: float = 0
-  weeks: float = 1
-  days: float = 0
-  hours: float = 0
-  minutes: float = 0
-  seconds: float = 0
+  dynamic: bool = True
+  years: float = 0.0
+  months: float = 0.0
+  weeks: float = 0.0
+  days: float = 0.0
+  hours: float = 0.0
+  minutes: float = 0.0
+  seconds: float = 0.0
 
 @dataclass
 class JobListingCriteria:

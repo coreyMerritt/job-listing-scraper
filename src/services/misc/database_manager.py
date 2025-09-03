@@ -7,7 +7,6 @@ from sqlalchemy import create_engine, desc, func
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
 from entities.job_listings.abc_job_listing import JobListing
-from entities.job_application import JobApplication
 from models.configs.system_config import DatabaseConfig
 from models.db.job_application_orm import JobApplicationORM
 from models.db.base import Base

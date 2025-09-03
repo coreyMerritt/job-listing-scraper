@@ -11,6 +11,16 @@ quick_settings:
     job_listing_criteria:
       not_in_ignore: true
       is_in_ideal: false
+      max_age:
+        dynamic: true
+        # This will only be considered if dynamic is false
+        years: 0
+        months: 0
+        weeks: 0
+        days: 0
+        hours: 18
+        minutes: 0
+        seconds: 0
     default_page_load_timeout: 30
 system:
   browser:

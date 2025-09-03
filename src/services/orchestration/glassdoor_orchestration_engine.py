@@ -1,8 +1,7 @@
 import logging
 import time
 import undetected_chromedriver as uc
-from selenium.common.exceptions import JavascriptException, TimeoutException
-from exceptions.service_is_down_exception import ServiceIsDownException
+from selenium.common.exceptions import TimeoutException
 from models.configs.glassdoor_config import GlassdoorConfig
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
@@ -19,7 +18,6 @@ from services.misc.language_parser import LanguageParser
 
 class GlassdoorOrchestrationEngine(OrchestrationEngine):
   __glassdoor_login_page: GlassdoorLoginPage
-  __glassdoor_job_listings_page: GlassdoorJobListingsPage
 
   def __init__(
     self,
@@ -34,7 +32,7 @@ class GlassdoorOrchestrationEngine(OrchestrationEngine):
   ):
     super().__init__(driver, selenium_helper, universal_config, quick_settings)
     self.__glassdoor_login_page = GlassdoorLoginPage(driver, selenium_helper, glassdoor_config)
-    self.__glassdoor_job_listings_page = GlassdoorJobListingsPage(
+    self._job_listings_page = GlassdoorJobListingsPage(
       driver,
       selenium_helper,
       database_manager,
@@ -43,6 +41,7 @@ class GlassdoorOrchestrationEngine(OrchestrationEngine):
       quick_settings,
       universal_config
     )
+    self._query_builder = GlassdoorQueryUrlBuilder(self._universal_config, self._quick_settings)
 
   def login(self) -> None:
     logging.info("Logging into Glassdoor...")
@@ -57,37 +56,17 @@ class GlassdoorOrchestrationEngine(OrchestrationEngine):
         time.sleep(0.5)
     self.__glassdoor_login_page.login()
 
-  def scrape(self) -> None:
-    search_terms = self._universal_config.search.terms.match
-    for search_term in search_terms:
-      timeout = 60.0
-      start_time = time.time()
-      while True:
-        try:
-          while time.time() - start_time < timeout:
-            try:
-              query_builder = GlassdoorQueryUrlBuilder(self._universal_config, self._quick_settings)
-              query_url = query_builder.build(search_term)
-              self.__go_to_query_url(query_url)
-              self.__wait_for_query_url_resolution(query_url)
-              self.__glassdoor_job_listings_page.scrape_current_query()
-              break
-            except TimeoutError:
-              logging.warning("Timed out waiting for query url. Trying again...")
-              time.sleep(0.1)
-            except ServiceIsDownException:
-              logging.error("Glassdoor service appears to be down. Skipping all Glassdoor queries...")
-              return
-          break
-        except JavascriptException:
-          logging.error("Glassdoor \"Show More Jobs\" button isn't functioning. Trying again...")
-          continue
-
   def get_jobs_parsed_count(self) -> int:
-    return self.__glassdoor_job_listings_page.get_jobs_parsed_count()
+    return self._job_listings_page.get_jobs_parsed_count()
 
   def reset_jobs_parsed_count(self) -> None:
-    self.__glassdoor_job_listings_page.reset_jobs_parsed_count()
+    self._job_listings_page.reset_jobs_parsed_count()
+
+  def _is_security_checkpoint(self) -> bool:
+    return self._selenium_helper.exact_text_is_present(
+      "Help Us Protect Glassdoor",
+      ElementType.H1
+    )
 
   def __wait_for_human_verification_page(self) -> None:
     while True:
@@ -106,14 +85,7 @@ class GlassdoorOrchestrationEngine(OrchestrationEngine):
       logging.info("Waiting for login page to appear...")
       time.sleep(0.5)
 
-  def __go_to_query_url(self, url: str) -> None:
-    logging.info("Going to query url: %s...", url)
-    try:
-      self._driver.get(url)
-    except TimeoutException:
-      pass
-
-  def __wait_for_query_url_resolution(self, query_url: str, timeout=15.0) -> None:
+  def _wait_for_query_url_resolution(self, query_url: str, timeout=15.0) -> None:
     start_time = time.time()
     while time.time() - start_time < timeout:
       if self._driver.current_url == query_url:

@@ -10,7 +10,7 @@ from entities.job_listings.abc_job_listing import JobListing
 from services.misc.language_parser import LanguageParser
 
 
-class LinkedinJobListing2(JobListing):
+class LinkedinJobListing(JobListing):
   __job_header_div: WebElement | None
 
   def __init__(

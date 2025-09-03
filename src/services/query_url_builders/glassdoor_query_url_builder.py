@@ -3,9 +3,10 @@ import math
 from urllib.parse import quote
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
+from services.query_url_builders.abc_query_url_builder import QueryUrlBuilder
 
 
-class GlassdoorQueryUrlBuilder:
+class GlassdoorQueryUrlBuilder(QueryUrlBuilder):
   __easy_apply_only: bool
   __location: str
   __remote: bool

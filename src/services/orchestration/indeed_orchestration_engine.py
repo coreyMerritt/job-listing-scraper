@@ -22,7 +22,6 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
   __indeed_home_page: IndeedHomePage
   __indeed_login_page: IndeedLoginPage
   __indeed_one_time_code_page: IndeedOneTimeCodePage
-  __indeed_job_listings_page: IndeedJobListingsPage
 
   def __init__(
     self,
@@ -39,7 +38,7 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
     self.__indeed_home_page = IndeedHomePage(selenium_helper)
     self.__indeed_login_page = IndeedLoginPage(driver, selenium_helper, indeed_config)
     self.__indeed_one_time_code_page = IndeedOneTimeCodePage(driver, selenium_helper, indeed_config)
-    self.__indeed_job_listings_page = IndeedJobListingsPage(
+    self._job_listings_page = IndeedJobListingsPage(
       driver,
       selenium_helper,
       database_manager,
@@ -48,6 +47,7 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
       quick_settings,
       universal_config
     )
+    self._query_builder = IndeedQueryUrlBuilder(self._universal_config, self._quick_settings)
 
   def login(self) -> None:
     logging.info("Logging into Indeed...")
@@ -66,34 +66,22 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
       self.__indeed_one_time_code_page.resolve_with_mail_dot_com()
     self.__indeed_one_time_code_page.wait_for_captcha_resolution()
 
-  def scrape(self) -> None:
-    search_terms = self._universal_config.search.terms.match
-    for search_term in search_terms:
-      timeout = 60.0
-      start_time = time.time()
-      while time.time() - start_time < timeout:
-        try:
-          query_builder = IndeedQueryUrlBuilder(self._universal_config, self._quick_settings)
-          query_url = query_builder.build(search_term)
-          self.__go_to_query_url(query_url)
-          self.__indeed_job_listings_page.scrape_current_query()
-          break
-        except TimeoutError:
-          logging.warning("Timed out waiting for query url. Trying again...")
-          time.sleep(0.1)
-
   def get_jobs_parsed_count(self) -> int:
-    return self.__indeed_job_listings_page.get_jobs_parsed_count()
+    return self._job_listings_page.get_jobs_parsed_count()
 
   def reset_jobs_parsed_count(self) -> None:
-    self.__indeed_job_listings_page.reset_jobs_parsed_count()
+    self._job_listings_page.reset_jobs_parsed_count()
 
-  def __go_to_query_url(self, url: str) -> None:
-    logging.info("Going to query url: %s...", url)
-    try:
-      self._driver.get(url)
-    except TimeoutException:
-      pass
+  def _wait_for_query_url_resolution(self, query_url: str) -> None:
+    input("Implement me 4765")
+
+  def _is_security_checkpoint(self) -> bool:
+    if self._selenium_helper.exact_text_is_present(
+      "Additional Verification Required",
+      ElementType.H1
+    ):
+      return True
+    return False
 
   def __wait_for_security_checkpoint(self, timeout=86400.0) -> None:
     start_time = time.time()

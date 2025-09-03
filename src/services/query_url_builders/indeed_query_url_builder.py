@@ -4,9 +4,10 @@ from typing import List
 
 from models.configs.quick_settings import QuickSettings
 from models.configs.universal_config import UniversalConfig
+from services.query_url_builders.abc_query_url_builder import QueryUrlBuilder
 
 
-class IndeedQueryUrlBuilder:
+class IndeedQueryUrlBuilder(QueryUrlBuilder):
   __ignore_terms: List[str]
   __location: str | None
   __max_age: timedelta

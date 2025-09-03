@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from functools import partial
 import logging
 import sys
@@ -12,6 +12,7 @@ from dacite import from_dict
 from exceptions.memory_overload_exception import MemoryOverloadException
 from exceptions.rate_limited_exception import RateLimitedException
 from models.configs.full_config import FullConfig
+from models.configs.quick_settings import MaxAge
 from models.enums.platform import Platform
 from services.misc.database_manager import DatabaseManager
 from services.misc.proxy_manager import ProxyManager
@@ -68,14 +69,15 @@ def start() -> None:
     config.linkedin,
     proxy_manager
   )
-  scrape(
-    config,
-    glassdoor_orchestration_engine,
-    indeed_orchestration_engine,
-    linkedin_orchestration_engine,
-    database_manager,
-    proxy_manager
-  )
+  while True:
+    scrape(
+      config,
+      glassdoor_orchestration_engine,
+      indeed_orchestration_engine,
+      linkedin_orchestration_engine,
+      database_manager,
+      proxy_manager
+    )
 
 def parse_args(config: FullConfig) -> None:
   parser = argparse.ArgumentParser()
@@ -101,25 +103,28 @@ def scrape(
   database_manager: DatabaseManager,
   proxy_manager: ProxyManager
 ) -> None:
+  if config.quick_settings.bot_behavior.job_listing_criteria.max_age.dynamic:
+    __set_dynamic_max_age(config, database_manager)
+  input(config.quick_settings.bot_behavior.job_listing_criteria.max_age)
   system_info_manager = SystemInfoManager()
   address = system_info_manager.get_default_address()
   platforms = str(config.quick_settings.bot_behavior.platform_order)
   jobs_parsed = 0
-  start_time = datetime.now()
+  start_time = datetime.now(timezone.utc)
   for some_platform in config.quick_settings.bot_behavior.platform_order:
     platform = str(some_platform).lower()
-    if platform == Platform.GLASSDOOR.value.lower():
-      glassdoor_orchestration_engine.login()
-      jobs_parsed += glassdoor_orchestration_engine.get_jobs_parsed_count()
-      glassdoor_orchestration_engine.reset_jobs_parsed_count()
-    elif platform == Platform.INDEED.value.lower():
-      indeed_orchestration_engine.login()
-      jobs_parsed += glassdoor_orchestration_engine.get_jobs_parsed_count()
-      glassdoor_orchestration_engine.reset_jobs_parsed_count()
-    elif platform == Platform.LINKEDIN.value.lower():
-      linkedin_orchestration_engine.login()
-      jobs_parsed += glassdoor_orchestration_engine.get_jobs_parsed_count()
-      glassdoor_orchestration_engine.reset_jobs_parsed_count()
+    # if platform == Platform.GLASSDOOR.value.lower():
+    #   glassdoor_orchestration_engine.login()
+    #   jobs_parsed += glassdoor_orchestration_engine.get_jobs_parsed_count()
+    #   glassdoor_orchestration_engine.reset_jobs_parsed_count()
+    # elif platform == Platform.INDEED.value.lower():
+    #   indeed_orchestration_engine.login()
+    #   jobs_parsed += glassdoor_orchestration_engine.get_jobs_parsed_count()
+    #   glassdoor_orchestration_engine.reset_jobs_parsed_count()
+    # elif platform == Platform.LINKEDIN.value.lower():
+    #   linkedin_orchestration_engine.login()
+    #   jobs_parsed += glassdoor_orchestration_engine.get_jobs_parsed_count()
+    #   glassdoor_orchestration_engine.reset_jobs_parsed_count()
     try:
       if platform == Platform.GLASSDOOR.value.lower():
         glassdoor_orchestration_engine.scrape()
@@ -136,7 +141,7 @@ def scrape(
       traceback.print_exc()
       input("\tPress enter to exit...")
       sys.exit(1)
-  database_manager.log_system_record(address, jobs_parsed, platforms, True, start_time, datetime.now())
+  database_manager.log_system_record(address, jobs_parsed, platforms, True, start_time, datetime.now(timezone.utc))
 
 def glassdoor(config: FullConfig, args: argparse.Namespace) -> None:    # pylint: disable=unused-argument
   config.quick_settings.bot_behavior.platform_order = [Platform.GLASSDOOR.value]
@@ -172,6 +177,22 @@ def configure_logger():
   ]
   for name in noisy_loggers:
     logging.getLogger(name).setLevel(logging.WARNING)
+
+def __set_dynamic_max_age(config: FullConfig, database_manager: DatabaseManager) -> None:
+  system_record = database_manager.get_last_system_record()
+  if not system_record:
+    return None
+  assert isinstance(system_record.start_time, datetime)
+  time_since_last_scrape = datetime.now(timezone.utc) - system_record.start_time
+  config.quick_settings.bot_behavior.job_listing_criteria.max_age = __get_max_age_from_timedelta(time_since_last_scrape)
+  config.quick_settings.bot_behavior.job_listing_criteria.max_age.hours += 1  # Add a small buffer
+
+def __get_max_age_from_timedelta(time_since_last_scrape: timedelta) -> MaxAge:
+  new_max_age = MaxAge(
+    dynamic = True,
+    seconds=time_since_last_scrape.total_seconds()
+  )
+  return new_max_age
 
 
 while True:
