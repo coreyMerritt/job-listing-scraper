@@ -34,9 +34,6 @@ class OrchestrationEngine(ABC):
     # self._job_listings_page = SomeJobListingsPage(...)
 
   def scrape(self) -> None:
-    while self._is_security_checkpoint():
-      time.sleep(0.5)
-      logging.info("Waiting for user to solve security checkpoint...")
     search_terms = self._universal_config.search.terms.match
     for search_term in search_terms:
       timeout = 60.0
@@ -47,6 +44,9 @@ class OrchestrationEngine(ABC):
             try:
               query_url = self._query_url_builder.build(search_term)
               self._go_to_query_url(query_url)
+              while self._is_security_checkpoint():
+                time.sleep(0.5)
+                logging.info("Waiting for user to solve security checkpoint...")
               self._wait_for_query_url_resolution(query_url)
               self._job_listings_page.scrape_current_query()
               break

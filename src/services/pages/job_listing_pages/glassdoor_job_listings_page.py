@@ -194,6 +194,8 @@ class GlassdoorJobListingsPage(JobListingsPage):
           self.__remove_create_job_dialog()
         if self.__is_survey_popup():
           self.__remove_survey_popup()
+        if self.__is_never_miss_an_opportunity_dialog():
+          self.__remove_never_miss_an_opportunity_dialog()
         time.sleep(0.1)
       except ElementClickInterceptedException:
         logging.debug("ElementClickInterceptedException. Checking for dialogs and trying again...")
@@ -201,6 +203,8 @@ class GlassdoorJobListingsPage(JobListingsPage):
           self.__remove_create_job_dialog()
         if self.__is_survey_popup():
           self.__remove_survey_popup()
+        if self.__is_never_miss_an_opportunity_dialog():
+          self.__remove_never_miss_an_opportunity_dialog()
         time.sleep(0.1)
       except StaleElementReferenceException:
         self.__get_show_more_jobs_button()
@@ -263,6 +267,27 @@ class GlassdoorJobListingsPage(JobListingsPage):
     exit_button_id = "qual_close_open"
     exit_button = self._driver.find_element(By.ID, exit_button_id)
     exit_button.click()
+
+  def __is_never_miss_an_opportunity_dialog(self) -> bool:
+    div_class_name = "ModalOverlay"
+    try:
+      overlay_div = self._driver.find_element(By.CLASS_NAME, div_class_name)
+    except NoSuchElementException:
+      return False
+    return self._selenium_helper.exact_text_is_present(
+      "Never Miss an Opportunity",
+      ElementType.H1,
+      overlay_div
+    )
+
+  def __remove_never_miss_an_opportunity_dialog(self) -> None:
+    assert self.__is_never_miss_an_opportunity_dialog()
+    div_class_name = "ModalOverlay"
+    overlay_div = self._driver.find_element(By.CLASS_NAME, div_class_name)
+    close_button_class_name = "CloseButton"
+    close_button = overlay_div.find_element(By.CLASS_NAME, close_button_class_name)
+    close_button.click()
+
 
   def __is_no_results_found_page(self) -> bool:
     no_results_found_h1_class = "ErrorPage_errorPageTitle__XtznY"
