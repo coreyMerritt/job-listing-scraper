@@ -47,7 +47,7 @@ class IndeedOrchestrationEngine(OrchestrationEngine):
       quick_settings,
       universal_config
     )
-    self._query_builder = IndeedQueryUrlBuilder(self._universal_config, self._quick_settings)
+    self._query_url_builder = IndeedQueryUrlBuilder(self._universal_config, self._quick_settings)
 
   def login(self) -> None:
     logging.info("Logging into Indeed...")

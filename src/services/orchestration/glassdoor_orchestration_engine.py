@@ -41,7 +41,7 @@ class GlassdoorOrchestrationEngine(OrchestrationEngine):
       quick_settings,
       universal_config
     )
-    self._query_builder = GlassdoorQueryUrlBuilder(self._universal_config, self._quick_settings)
+    self._query_url_builder = GlassdoorQueryUrlBuilder(self._universal_config, self._quick_settings)
 
   def login(self) -> None:
     logging.info("Logging into Glassdoor...")
