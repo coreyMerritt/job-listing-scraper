@@ -35,6 +35,12 @@ class LinkedinJobListingsPage(JobListingsPage):
     except NoSuchElementException:
       return False
 
+  def _get_base_url(self) -> str:
+    return "linkedin.com"
+
+  def _get_platform(self) -> Platform:
+    return Platform.LINKEDIN
+
   def _is_zero_results(self, timeout=30.0) -> bool:
     results_div_selector = ".jobs-search-results-list__subtitle"
     results_regex = r"([0-9]+)\ result"
@@ -58,9 +64,6 @@ class LinkedinJobListingsPage(JobListingsPage):
         logging.debug("Failed to find results div. Trying again...")
         time.sleep(0.1)
     raise NoResultsDataException("Failed to find results div.")
-
-  def _get_platform(self) -> Platform:
-    return Platform.LINKEDIN
 
   def _get_job_listings_ul(self, timeout=5.0) -> WebElement:
     logging.debug("Getting Job Listings ul...")
@@ -160,12 +163,6 @@ class LinkedinJobListingsPage(JobListingsPage):
       except TimeoutException as e:
         raise SomethingWentWrongPageException() from e
     raise NoMoreJobListingsException()
-
-  def _add_job_listing_to_db(self, job_listing: JobListing) -> None:
-    self._database_manager.create_new_job_listing(
-      job_listing,
-      Platform.LINKEDIN
-    )
 
   def _anti_rate_limit_wait(self) -> None:
     random_time = random.random() * 5

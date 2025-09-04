@@ -11,6 +11,7 @@ import yaml
 from dacite import from_dict
 from exceptions.memory_overload_exception import MemoryOverloadException
 from exceptions.rate_limited_exception import RateLimitedException
+from exceptions.unknown_platform_exception import UnknownPlatformException
 from models.configs.full_config import FullConfig
 from models.configs.quick_settings import MaxAge
 from models.enums.platform import Platform
@@ -132,6 +133,8 @@ def scrape(
         indeed_orchestration_engine.scrape()
       elif platform == Platform.LINKEDIN.value.lower():
         linkedin_orchestration_engine.scrape()
+      else:
+        raise UnknownPlatformException()
     except MemoryOverloadException as e:
       raise e
     except RateLimitedException as e:

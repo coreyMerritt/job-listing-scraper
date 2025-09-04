@@ -1,0 +1,2 @@
+class UnknownPlatformException(Exception):
+  pass

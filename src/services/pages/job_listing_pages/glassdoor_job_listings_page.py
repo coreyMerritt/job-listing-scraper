@@ -30,8 +30,11 @@ from services.pages.job_listing_pages.abc_job_listings_page import JobListingsPa
 
 class GlassdoorJobListingsPage(JobListingsPage):
   def is_present(self) -> bool:
-    input("Implment me 7274")
+    input("Implement me 7274")
     return True
+
+  def _get_base_url(self) -> str:
+    return "glassdoor.com"
 
   def _get_platform(self) -> Platform:
     return Platform.GLASSDOOR
@@ -139,12 +142,6 @@ class GlassdoorJobListingsPage(JobListingsPage):
         logging.warning("TimeoutError while trying to build job listing. Trying again...")
         time.sleep(0.1)
     raise TimeoutException("Timed out trying to build job listing.")
-
-  def _add_job_listing_to_db(self, job_listing: GlassdoorJobListing) -> None:
-    self._database_manager.create_new_job_listing(
-      job_listing,
-      Platform.GLASSDOOR
-    )
 
   def _anti_rate_limit_wait(self) -> None:
     pass

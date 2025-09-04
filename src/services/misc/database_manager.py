@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import logging
 from typing import List, Tuple
 from urllib.parse import quote_plus
-from sqlalchemy import create_engine, desc, func
+from sqlalchemy import create_engine, desc, func, or_
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, Session
 from entities.job_listings.abc_job_listing import JobListing
@@ -45,12 +45,19 @@ class DatabaseManager:
     else:
       estimated_post_time = datetime.now(timezone.utc)
     with self.get_session() as session:
-      job_listing_entries: List[JobListingORM] = session.query(JobListingORM).filter_by(
-        job_title=job_listing.get_title(),
-        company=job_listing.get_company(),
-        location=job_listing.get_location(),
-        platform=platform.value,
-      ).all()
+      job_listing_entries: List[JobListingORM] = (
+        session.query(JobListingORM)
+        .filter(
+          JobListingORM.job_title == job_listing.get_title(),
+          JobListingORM.company == job_listing.get_company(),
+          JobListingORM.location == job_listing.get_location(),
+          or_(
+            JobListingORM.platform == platform.value,
+            JobListingORM.platform == Platform.COMPANY_WEBSITE.value,
+          )
+        )
+        .all()
+      )
     for db_job_listing in job_listing_entries:
       if db_job_listing.post_time:
         db_estimated_post_time = db_job_listing.post_time

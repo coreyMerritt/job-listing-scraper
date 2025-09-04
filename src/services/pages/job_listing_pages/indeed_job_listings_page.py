@@ -29,6 +29,9 @@ class IndeedJobListingsPage(JobListingsPage):
     except NoSuchElementException:
       return False
 
+  def _get_base_url(self) -> str:
+    return "indeed.com"
+
   def _get_platform(self) -> Platform:
     return Platform.INDEED
 

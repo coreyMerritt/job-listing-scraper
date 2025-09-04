@@ -208,6 +208,16 @@ class JobListingsPage(ABC):
         self.scrape_current_query()
         return
 
+  def _add_job_listing_to_db(self, job_listing: JobListing) -> None:
+    if self._get_base_url() in job_listing.get_url():
+      platform = self._get_platform()
+    else:
+      platform = Platform.COMPANY_WEBSITE
+    self._database_manager.create_new_job_listing(
+      job_listing,
+      platform
+    )
+
   def _handle_potential_overload(self) -> None:
     current_memory_usage = psutil.virtual_memory().percent
     logging.debug("Current memory usage: %s%s", current_memory_usage, "%")
@@ -216,6 +226,10 @@ class JobListingsPage(ABC):
 
   @abstractmethod
   def is_present(self) -> bool:
+    pass
+
+  @abstractmethod
+  def _get_base_url(self) -> str:
     pass
 
   @abstractmethod
@@ -240,10 +254,6 @@ class JobListingsPage(ABC):
 
   @abstractmethod
   def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=10.0) -> JobListing:
-    pass
-
-  @abstractmethod
-  def _add_job_listing_to_db(self, job_listing: JobListing) -> None:
     pass
 
   @abstractmethod
