@@ -104,9 +104,13 @@ def scrape(
   database_manager: DatabaseManager,
   proxy_manager: ProxyManager
 ) -> None:
-  if config.quick_settings.bot_behavior.job_listing_criteria.max_age.dynamic:
+  IS_DYNAMIC_AGE = config.quick_settings.bot_behavior.job_listing_criteria.max_age.dynamic
+  if IS_DYNAMIC_AGE:
     __set_dynamic_max_age(config, database_manager)
-  input(config.quick_settings.bot_behavior.job_listing_criteria.max_age)
+    logging.info(
+      "Checking all listings up to: %s hours",
+      config.quick_settings.bot_behavior.job_listing_criteria.max_age.seconds / 3600
+    )
   system_info_manager = SystemInfoManager()
   address = system_info_manager.get_default_address()
   platforms = str(config.quick_settings.bot_behavior.platform_order)
@@ -188,7 +192,6 @@ def __set_dynamic_max_age(config: FullConfig, database_manager: DatabaseManager)
   assert isinstance(system_record.start_time, datetime)
   time_since_last_scrape = datetime.now(timezone.utc) - system_record.start_time
   config.quick_settings.bot_behavior.job_listing_criteria.max_age = __get_max_age_from_timedelta(time_since_last_scrape)
-  config.quick_settings.bot_behavior.job_listing_criteria.max_age.hours += 1  # Add a small buffer
 
 def __get_max_age_from_timedelta(time_since_last_scrape: timedelta) -> MaxAge:
   new_max_age = MaxAge(
