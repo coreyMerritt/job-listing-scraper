@@ -83,6 +83,8 @@ class YoeParser:
     r"(\w+) years of professional",
     r"(\d+) years professional",
     r"(\w+) years professional",
+    r"(\d+) years of progressive experience",
+    r"(\w+) years of progressive experience",
   ]
 
   def parse(self, description: str) -> tuple[int | None, int | None]:
