@@ -51,7 +51,7 @@ class OrchestrationEngine(ABC):
               self._wait_for_query_url_resolution(query_url)
               self._job_listings_page.scrape_current_query()
               break
-            except TimeoutError:
+            except TimeoutException:
               logging.warning("Timed out waiting for query url. Trying again...")
               time.sleep(0.1)
             except NotLoggedInException:
