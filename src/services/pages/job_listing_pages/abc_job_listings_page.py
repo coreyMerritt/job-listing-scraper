@@ -70,7 +70,7 @@ class JobListingsPage(ABC):
     zero_results_count = 0
     while self._is_zero_results():
       zero_results_count += 1
-      if zero_results_count > 3:
+      if zero_results_count > 1:
         logging.info("0 results. Skipping query...")
         return
       else:
