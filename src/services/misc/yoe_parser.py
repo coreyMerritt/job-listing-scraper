@@ -73,8 +73,11 @@ class YoeParser:
     r"(\w+)\+ years",
     r"(\d+)\+years",
     r"(\w+)\+years",
+    r"(\w+) or more years",
     r"(\w+) \(\d+\) or more years",
-    r"\(\d+\) or more years"
+    r"\(\d+\) or more years",
+    r"minimum of (\d+)-\d+ years",
+    r"minimum of (\w+)-\w+ years"
   ]
 
   __min_only_patterns = [
