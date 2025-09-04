@@ -81,13 +81,26 @@ class LinkedinJobListingsPage(JobListingsPage):
         time.sleep(0.1)
     raise TimeoutException("Timed out trying to get job listings ul.")
 
-  def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=4.0) -> LinkedinJobListing:
+  def _build_brief_job_listing_url(self, job_listing_li: WebElement) -> str:
+    title_anchor_selector = ".disabled.ember-view.job-card-container__link.UBPTBuIxmfjtoDVYyeVDGuNHYlmQndcRg.job-card-list__title--link"    # pylint: disable=line-too-long
+    url_anchor = job_listing_li.find_element(By.CSS_SELECTOR, title_anchor_selector)
+    href = url_anchor.get_attribute("href")
+    assert href
+    job_id_regex = r"\/jobs\/view\/([0-9]+)"
+    match = re.search(job_id_regex, href)
+    assert match
+    job_id = match.group(1)
+    url = f"https://www.linkedin.com/jobs/view/{job_id}"
+    return url
+
+  def _build_brief_job_listing(self, job_listing_li: WebElement, url: str, timeout=4.0) -> LinkedinJobListing:
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:
         self._selenium_helper.scroll_into_view(job_listing_li)
         job_listing = LinkedinJobListing(
           self._language_parser,
+          url,
           job_listing_li
         )
         return job_listing
@@ -98,8 +111,13 @@ class LinkedinJobListingsPage(JobListingsPage):
         time.sleep(0.1)
     raise NoSuchElementException("Failed to find full job details div.")
 
+  def _build_job_listing_url(self, job_listing_li: WebElement) -> str:
+    # Could maybe do better, but its really hard to not trigger botting checkpoints
+    return self._build_brief_job_listing_url(job_listing_li)
+
   def _build_job_listing(
     self,
+    url: str,
     job_listing_li: WebElement,
     job_details_div: WebElement,
     timeout=10
@@ -111,6 +129,7 @@ class LinkedinJobListingsPage(JobListingsPage):
         job_header_div = self.__get_job_header_div()
         job_listing = LinkedinJobListing(
           self._language_parser,
+          url,
           job_listing_li,
           job_details_div,
           job_header_div

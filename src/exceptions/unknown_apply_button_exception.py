@@ -1,0 +1,2 @@
+class UnknownApplyButtonException(Exception):
+  pass

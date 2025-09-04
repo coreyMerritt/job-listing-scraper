@@ -16,12 +16,13 @@ class LinkedinJobListing(JobListing):
   def __init__(
     self,
     language_parser: LanguageParser,
+    url: str,
     job_listing_li: WebElement,
     job_details_div: WebElement | None = None,
     job_header_div: WebElement | None = None
   ):
     self.__job_header_div = job_header_div
-    super().__init__(language_parser, job_listing_li, job_details_div)
+    super().__init__(language_parser, url, job_listing_li, job_details_div)
 
   # Actually initializes min and max pay -- its not super easy to seperate them without redundant calulcations
   def _init_min_pay(self) -> None:
@@ -55,18 +56,6 @@ class LinkedinJobListing(JobListing):
     relative_location_li_xpath = "./div/div/div[1]/div/div[2]/div[3]/ul/li/span"
     location_span = self._get_job_listing_li().find_element(By.XPATH, relative_location_li_xpath)
     self.set_location(location_span.text)
-
-  def _init_url(self) -> None:
-    title_anchor_selector = ".disabled.ember-view.job-card-container__link.UBPTBuIxmfjtoDVYyeVDGuNHYlmQndcRg.job-card-list__title--link"    # pylint: disable=line-too-long
-    url_anchor = self._get_job_listing_li().find_element(By.CSS_SELECTOR, title_anchor_selector)
-    href = url_anchor.get_attribute("href")
-    assert href
-    job_id_regex = r"\/jobs\/view\/([0-9]+)"
-    match = re.search(job_id_regex, href)
-    assert match
-    job_id = match.group(1)
-    url = f"https://www.linkedin.com/jobs/view/{job_id}"
-    self.set_url(url)
 
   # Actually initializes min and max yoe
   def _init_min_yoe(self) -> None:

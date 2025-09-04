@@ -103,13 +103,6 @@ class IndeedJobListing(JobListing):
           return
     raise NoSuchElementException("Failed to find a suitable location element.")
 
-  def _init_url(self) -> None:
-    title_anchor_selector = ".jcs-JobTitle.css-1baag51.eu4oa1w0"
-    title_anchor = self._get_job_listing_li().find_element(By.CSS_SELECTOR, title_anchor_selector)
-    url = title_anchor.get_attribute("href")
-    assert url
-    self.set_url(url)
-
   # Actually initializes min and max yoe
   def _init_min_yoe(self) -> None:
     self._parse_yoe_from_description()

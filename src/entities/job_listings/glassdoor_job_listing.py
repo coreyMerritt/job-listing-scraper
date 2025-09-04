@@ -90,15 +90,6 @@ class GlassdoorJobListing(JobListing):
     location_div = self._get_job_listing_li().find_element(By.CLASS_NAME, location_div_class)
     self.set_location(location_div.text.strip())
 
-  def _init_url(self) -> None:
-    if self._get_job_details_div():
-      input(self._get_job_details_div().get_attribute("innerHTML"))
-    title_anchor_class = "JobCard_jobTitle__GLyJ1"
-    title_anchor = self._get_job_listing_li().find_element(By.CLASS_NAME, title_anchor_class)
-    job_url = title_anchor.get_attribute("href")
-    assert job_url
-    self.set_url(job_url)
-
   # Actually initializes min and max yoe
   def _init_min_yoe(self) -> None:
     self._parse_yoe_from_description()

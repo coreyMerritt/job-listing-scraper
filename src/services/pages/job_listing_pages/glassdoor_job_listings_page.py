@@ -23,6 +23,7 @@ from exceptions.no_results_found_page_exception import NoResultsFoundPageExcepti
 from exceptions.page_didnt_load_exception import PageDidntLoadException
 from exceptions.page_froze_exception import PageFrozeException
 from exceptions.unable_to_determine_job_count_exception import UnableToDetermineJobCountException
+from exceptions.unknown_apply_button_exception import UnknownApplyButtonException
 from models.enums.element_type import ElementType
 from models.enums.platform import Platform
 from services.pages.job_listing_pages.abc_job_listings_page import JobListingsPage
@@ -89,7 +90,16 @@ class GlassdoorJobListingsPage(JobListingsPage):
         job_listings_ul = self._get_job_listings_ul()
     raise NoMoreJobListingsException()
 
-  def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=10.0) -> GlassdoorJobListing:
+  def _build_brief_job_listing_url(self, job_listing_li: WebElement) -> str:
+    if self._get_job_details_div():
+      input(self._get_job_details_div().get_attribute("innerHTML"))
+    title_anchor_class = "JobCard_jobTitle__GLyJ1"
+    title_anchor = job_listing_li.find_element(By.CLASS_NAME, title_anchor_class)
+    job_url = title_anchor.get_attribute("href")
+    assert job_url
+    return job_url
+
+  def _build_brief_job_listing(self, job_listing_li: WebElement, url: str, timeout=10.0) -> GlassdoorJobListing:
     last_error = None
     start_time = time.time()
     while time.time() - start_time < timeout:
@@ -97,6 +107,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
         self._selenium_helper.scroll_into_view(job_listing_li)
         brief_job_listing = GlassdoorJobListing(
           self._language_parser,
+          url,
           job_listing_li
         )
         return brief_job_listing
@@ -112,8 +123,24 @@ class GlassdoorJobListingsPage(JobListingsPage):
       raise last_error
     raise TimeoutException("Timed out trying to build job listing.")
 
+  def _build_job_listing_url(self, job_listing_li: WebElement) -> str:
+    apply_button_selector = ".button_Button__o_a9q.button-base_Button__zzUq2"
+    apply_button = self._driver.find_element(By.CSS_SELECTOR, apply_button_selector)
+    if self.__apply_button_is_local(apply_button):
+      return self._build_brief_job_listing_url(job_listing_li)
+    elif self.__apply_button_is_external(apply_button):
+      apply_button.click()
+      self._driver.switch_to.window(self._driver.window_handles[-1])
+      url = self._driver.current_url
+      self._driver.close()
+      self._driver.switch_to.window(self._driver.window_handles[0])
+      return url
+    else:
+      raise UnknownApplyButtonException()
+
   def _build_job_listing(
     self,
+    url: str,
     job_listing_li: WebElement,
     job_details_div: WebElement,
     timeout=10.0
@@ -125,6 +152,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
         self._selenium_helper.scroll_into_view(job_listing_li)
         job_listing = GlassdoorJobListing(
           self._language_parser,
+          url,
           job_listing_li,
           job_details_div
         )
@@ -366,3 +394,19 @@ class GlassdoorJobListingsPage(JobListingsPage):
         logging.debug("Waiting for job description to load... [NOSUCHELE]")
         time.sleep(0.1)
     raise JobDetailsDidntLoadException()
+
+  def __apply_button_is_local(self, apply_button: WebElement) -> bool:
+    easy_apply_svg_class = "EasyApplyButton_bolt__6VJWS"
+    try:
+      apply_button.find_element(By.CLASS_NAME, easy_apply_svg_class)
+      return True
+    except NoSuchElementException:
+      return False
+
+  def __apply_button_is_external(self, apply_button: WebElement) -> bool:
+    apply_on_employer_site_span_class = "ApplyNow_hideWhenSmall__ram5N"
+    try:
+      apply_button.find_element(By.CLASS_NAME, apply_on_employer_site_span_class)
+      return True
+    except NoSuchElementException:
+      return False

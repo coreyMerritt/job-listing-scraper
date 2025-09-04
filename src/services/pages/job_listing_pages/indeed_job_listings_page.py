@@ -72,11 +72,19 @@ class IndeedJobListingsPage(JobListingsPage):
       raise JobListingIsAdvertisementException() from e
     return job_listing_li
 
-  def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=30.0) -> IndeedJobListing | None:
+  def _build_brief_job_listing_url(self, job_listing_li: WebElement) -> str:
+    title_anchor_selector = ".jcs-JobTitle.css-1baag51.eu4oa1w0"
+    title_anchor = job_listing_li.find_element(By.CSS_SELECTOR, title_anchor_selector)
+    url = title_anchor.get_attribute("href")
+    assert url
+    return url
+
+  def _build_brief_job_listing(self, job_listing_li: WebElement, url: str, timeout=30.0) -> IndeedJobListing | None:
     try:
       self._selenium_helper.scroll_into_view(job_listing_li)
       job_listing = IndeedJobListing(
         self._language_parser,
+        url,
         job_listing_li
       )
       return job_listing
@@ -126,12 +134,17 @@ class IndeedJobListingsPage(JobListingsPage):
       time.sleep(1)
     return self._get_job_details_div()
 
-  def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10.0) -> JobListing:
+  def _build_job_listing_url(self, job_listing_li: WebElement) -> str:
+    # Could maybe do better, but its really hard to not trigger botting checkpoints
+    return self._build_brief_job_listing_url(job_listing_li)
+
+  def _build_job_listing(self, url: str, job_listing_li: WebElement, job_details_div: WebElement, timeout=10.0) -> JobListing:
     start_time = time.time()
     while time.time() - start_time < timeout:
       try:
         job_listing = IndeedJobListing(
           self._language_parser,
+          url,
           job_listing_li,
           job_details_div
         )

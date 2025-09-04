@@ -103,7 +103,8 @@ class JobListingsPage(ABC):
         while True:
           try:
             logging.info("Building Brief Job Listing...")
-            brief_job_listing = self._build_brief_job_listing(job_listing_li)
+            brief_job_listing_url = self._build_brief_job_listing_url(job_listing_li)
+            brief_job_listing = self._build_brief_job_listing(job_listing_li, brief_job_listing_url)
             break
           except StaleElementReferenceException:
             job_listing_li = self._get_job_listing_li(job_listing_li_index)
@@ -136,7 +137,8 @@ class JobListingsPage(ABC):
             logging.info("Getting Job Details Div...")
             job_details_div = self._get_job_details_div()
             logging.info("Building Job Listing...")
-            job_listing = self._build_job_listing(job_listing_li, job_details_div)
+            job_listing_url = self._build_job_listing_url(job_listing_li)
+            job_listing = self._build_job_listing(job_listing_url, job_listing_li, job_details_div)
             break
           except JobDetailsDidntLoadException as e:
             if self._quick_settings.bot_behavior.fallback_to_brief_on_load_issues:
@@ -253,7 +255,11 @@ class JobListingsPage(ABC):
     pass
 
   @abstractmethod
-  def _build_brief_job_listing(self, job_listing_li: WebElement, timeout=10.0) -> JobListing:
+  def _build_brief_job_listing_url(self, job_listing_li: WebElement) -> str:
+    pass
+
+  @abstractmethod
+  def _build_brief_job_listing(self, job_listing_li: WebElement, url: str, timeout=10.0) -> JobListing:
     pass
 
   @abstractmethod
@@ -269,7 +275,11 @@ class JobListingsPage(ABC):
     pass
 
   @abstractmethod
-  def _build_job_listing(self, job_listing_li: WebElement, job_details_div: WebElement, timeout=10.0) -> JobListing:
+  def _build_job_listing_url(self, job_listing_li: WebElement) -> str:
+    pass
+
+  @abstractmethod
+  def _build_job_listing(self, url: str, job_listing_li: WebElement, job_details_div: WebElement, timeout=10.0) -> JobListing:
     pass
 
   @abstractmethod

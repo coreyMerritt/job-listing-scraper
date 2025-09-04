@@ -26,9 +26,11 @@ class JobListing(ABC):
   def __init__(
     self,
     language_parser: LanguageParser,
+    url: str,
     job_listing_li: WebElement,
     job_details_div: WebElement | None = None
   ):
+    self.__url = url
     self.__job_listing_li = job_listing_li
     self.__job_details_div = job_details_div
     self._init_title()
@@ -36,7 +38,6 @@ class JobListing(ABC):
     self._init_location()
     self._init_min_pay()
     self._init_max_pay()
-    self._init_url()
     self._init_language(language_parser)
     self._init_description()
     self._init_min_yoe()
@@ -61,10 +62,6 @@ class JobListing(ABC):
 
   @abstractmethod
   def _init_location(self) -> None:
-    pass
-
-  @abstractmethod
-  def _init_url(self) -> None:
     pass
 
   def _init_language(self, language_parser: LanguageParser) -> None:
