@@ -20,6 +20,7 @@ from exceptions.job_listing_opens_in_window_exception import JobListingOpensInWi
 from exceptions.no_more_job_listings_exception import NoMoreJobListingsException
 from exceptions.no_next_page_exception import NoNextPageException
 from exceptions.no_results_found_page_exception import NoResultsFoundPageException
+from exceptions.not_logged_in_exception import NotLoggedInException
 from exceptions.page_didnt_load_exception import PageDidntLoadException
 from exceptions.page_froze_exception import PageFrozeException
 from exceptions.unable_to_determine_job_count_exception import UnableToDetermineJobCountException
@@ -91,8 +92,6 @@ class GlassdoorJobListingsPage(JobListingsPage):
     raise NoMoreJobListingsException()
 
   def _build_brief_job_listing_url(self, job_listing_li: WebElement) -> str:
-    if self._get_job_details_div():
-      input(self._get_job_details_div().get_attribute("innerHTML"))
     title_anchor_class = "JobCard_jobTitle__GLyJ1"
     title_anchor = job_listing_li.find_element(By.CLASS_NAME, title_anchor_class)
     job_url = title_anchor.get_attribute("href")
@@ -124,8 +123,7 @@ class GlassdoorJobListingsPage(JobListingsPage):
     raise TimeoutException("Timed out trying to build job listing.")
 
   def _build_job_listing_url(self, job_listing_li: WebElement) -> str:
-    apply_button_selector = ".button_Button__o_a9q.button-base_Button__zzUq2"
-    apply_button = self._driver.find_element(By.CSS_SELECTOR, apply_button_selector)
+    apply_button = self.__get_apply_button()
     if self.__apply_button_is_local(apply_button):
       return self._build_brief_job_listing_url(job_listing_li)
     elif self.__apply_button_is_external(apply_button):
@@ -395,6 +393,18 @@ class GlassdoorJobListingsPage(JobListingsPage):
         time.sleep(0.1)
     raise JobDetailsDidntLoadException()
 
+  def __get_apply_button(self) -> WebElement:
+    apply_button_selector = ".button_Button__o_a9q.button-base_Button__zzUq2"
+    apply_buttons = self._driver.find_elements(By.CSS_SELECTOR, apply_button_selector)
+    for button in apply_buttons:
+      if "apply on employer site" in button.text.lower():
+        return button
+      elif "foo" in button.text.lower():
+        return button
+      elif "sign in to apply" in button.text.lower():
+        raise NotLoggedInException()
+    raise UnknownApplyButtonException()
+
   def __apply_button_is_local(self, apply_button: WebElement) -> bool:
     easy_apply_svg_class = "EasyApplyButton_bolt__6VJWS"
     try:
@@ -409,4 +419,6 @@ class GlassdoorJobListingsPage(JobListingsPage):
       apply_button.find_element(By.CLASS_NAME, apply_on_employer_site_span_class)
       return True
     except NoSuchElementException:
+      input(apply_button.get_attribute("innerHTML"))
+      input(apply_button.get_attribute("innerHTML"))
       return False

@@ -111,6 +111,7 @@ class JobListingsPage(ABC):
         brief_job_listing.print_most()
         if brief_job_listing.to_minimal_str() in self._current_session_jobs:
           logging.info("Ignoring Brief Job Listing because we've already applied this session. Skipping...")
+          input(f"DEBUG: {self._current_session_jobs}")
           continue
         logging.info("Adding Brief Job Listing to Current Session Jobs...")
         self._current_session_jobs.add(brief_job_listing.to_minimal_str())
@@ -279,7 +280,12 @@ class JobListingsPage(ABC):
     pass
 
   @abstractmethod
-  def _build_job_listing(self, url: str, job_listing_li: WebElement, job_details_div: WebElement, timeout=10.0) -> JobListing:
+  def _build_job_listing(
+    self, url: str,
+    job_listing_li: WebElement,
+    job_details_div: WebElement,
+    timeout=10.0
+  ) -> JobListing:
     pass
 
   @abstractmethod
