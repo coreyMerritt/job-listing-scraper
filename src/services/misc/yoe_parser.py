@@ -73,7 +73,10 @@ class YoeParser:
     r"(\w+)\+ years",
     r"(\d+)\+years",
     r"(\w+)\+years",
+    r"(\w+) \(\d+\) or more years",
+    r"\(\d+\) or more years"
   ]
+
   __min_only_patterns = [
     r"(\d+) years of experience",
     r"(\w+) years of experience",
